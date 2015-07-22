@@ -1,0 +1,11 @@
+{
+  "name": "Lobby",
+  "version": "1.0.0",
+  "description": "Game lobby",
+  "dependencies": {
+    "socket.io": "latest",
+    "express": "latest",
+    "jade": "latest"
+  },
+  "author": "Sergey Guzhvay"
+}
