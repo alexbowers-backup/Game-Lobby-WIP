@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html ng-app="lobby">
+<head>
+	<title>Game Lobby</title>
+	<link rel="stylesheet" type="text/css" href="css/bootstrap.min.css" />
+	<link rel="stylesheet" type="text/css" href="css/style.css" />
+	<script type="text/javascript" src="/socket.io/socket.io.js"></script>
+	<script type="text/javascript" src="js/jquery.min.js"></script>
+	<script type="text/javascript" src="js/bootstrap.min.js"></script>
+	<script type="text/javascript" src="js/angular.min.js"></script>
+	<script type="text/javascript" src="js/lobby.js"></script>
+	<script>
+		$(document).ready(function () {
+			$(document).ready(function(){
+				$('[data-toggle="tooltip"]').tooltip();
+			});
+			$('#invite').change(function () {
+				$(this).attr('size', $(this).val().length);
+			});
+		});
+	</script>
+</head>
+<body ng-controller="LobbyController as lobby">
+	<div class="main-container">
+		<div id="header">
+			<header ng-show="lobby.room.id">
+				<h3>Room #{{lobby.room.id}}</h3>
+
+				<p>Share this link to invite <input id="invite" type="text" class="form-control"
+				                                    value="{{lobby.room.link}}"></p>
+			</header>
+		</div>
+		<div id="message-wrap">
+			<div id="message" ng-class="{
+					alert: lobby.messageType === 'alert',
+					message: lobby.messageType === 'message'
+				}" ng-show="lobby.message">{{lobby.message}}</div>
+			<!--{{lobby.message}}-->
+		</div>
+		<div ng-hide="lobby.room.id">
+			<section id="tabs">
+				<ul class="nav nav-pills">
+					<li ng-class="{active: lobby.isSelected('create')}">
+						<a href="" ng-click="lobby.selectTab('create')">Create</a>
+					</li>
+					<li ng-class="{active: lobby.isSelected('join')}">
+						<a href="" ng-click="lobby.selectTab('join')">Join</a>
+					</li>
+				</ul>
+			</section>
+
+			<div class="block shadow" ng-show="lobby.isSelected('create')">
+				<form id="create-form">
+					<div class="form-group">
+						<input required="required" placeholder="Username" type="text" ng-model="lobby.form.user" tabindex="1">
+							<span data-toggle="tooltip" data-placement="right"
+							      title="Username may contain letters, numbers, underscores only and must be 4-12 length"
+							      class="glyphicon glyphicon-question-sign" aria-hidden="true"></span>
+					</div>
+					<input class="btn btn-info" type="submit" value="Create game" ng-click="lobby.submit('create')">
+				</form>
+			</div>
+			<div class="block shadow" ng-show="lobby.isSelected('join')">
+				<form id="join-form">
+					<div class="form-group">
+						<input required="required" placeholder="Username" type="text" ng-model="lobby.form.user" tabindex="1">
+							<span data-toggle="tooltip" data-placement="right"
+							      title="Username may contain letters, numbers, underscores only and must be 4-12 length"
+							      class="glyphicon glyphicon-question-sign" aria-hidden="true"></span>
+					</div>
+					<div class="form-group">
+						<input required="required" placeholder="Game ID" type="text" value="{{lobby.form.gameID}}" ng-model="lobby.form.gameID" tabindex="2"><br/>
+					</div>
+					<input class="btn btn-info" type="submit" value="Join game" ng-click="lobby.submit('join')">
+				</form>
+			</div>
+		</div>
+		<div id="room-wrap" ng-show="lobby.room.id">
+			<div id="room" class="block shadow col-md-8 col-md-offset-2">
+				<div id="users-list" class="col-md-7">
+					<div>
+								<span class="users master">
+									{{lobby.room.master}}
+								</span>
+						<br/>
+					</div>
+					<div ng-repeat="user in lobby.room.users | orderBy">
+								<span class="users" ng-class="{user: user === lobby.room.user}">
+									{{user}}
+								</span>
+						<br/>
+					</div>
+				</div>
+				<div id="nav" class="col-md-offset-8">
+					<div style="height: 44px;">
+						<p ng-show="lobby.room.isMaster" ng-hide="lobby.room.isStarted">
+							<button class="btn btn-info" ng-click="lobby.room.start()">Start game</button>
+
+						</p>
+						<p class="start-msg" ng-show="lobby.room.isStarted">
+							Game started <br/>
+							<span ng-show="lobby.room.isMaster">You are the master</span>
+						</p>
+					</div>
+					<p>
+						<button class="btn btn-info" ng-click="lobby.room.leave()">Leave</button>
+					</p>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>
