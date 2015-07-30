@@ -68,7 +68,7 @@
 							      title="Username may contain letters, numbers, underscores only and must be 4-12 length"
 							      class="glyphicon glyphicon-question-sign" aria-hidden="true"></span>
 					</div>
-					<div class="form-group">
+					<div class="form-group" ng-hide="lobby.query.gameid">
 						<input required="required" placeholder="Game ID" type="text" value="{{lobby.form.gameID}}" ng-model="lobby.form.gameID" tabindex="2"><br/>
 					</div>
 					<input class="btn btn-info" type="submit" value="Join game" ng-click="lobby.submit('join')">
@@ -93,8 +93,10 @@
 				</div>
 				<div id="nav" class="col-md-offset-8">
 					<div style="height: 44px;">
-						<p ng-show="lobby.room.isMaster" ng-hide="lobby.room.isStarted">
-							<button class="btn btn-info" ng-click="lobby.room.start()">Start game</button>
+						<p ng-show="lobby.room.isMaster && !lobby.room.isStarted">
+							<button class="btn btn-info" ng-click="lobby.room.start()">
+								Start game
+							</button>
 
 						</p>
 						<p class="start-msg" ng-show="lobby.room.isStarted">
@@ -103,7 +105,9 @@
 						</p>
 					</div>
 					<p>
-						<button class="btn btn-info" ng-click="lobby.room.leave()">Leave</button>
+						<button class="btn btn-info" ng-click="lobby.room.leave()">
+							Leave
+						</button>
 					</p>
 				</div>
 			</div>
