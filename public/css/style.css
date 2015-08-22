@@ -2,7 +2,7 @@
     text-align: center;
     margin: 0 auto;
     /*margin-top: 100px;*/
-    width: 640px;
+    /*width: 640px;*/
 }
 #message-wrap {
     height: 80px;
@@ -74,8 +74,40 @@ form input[type="text"] {
 }
 #invite {
     display: inline-block;
-    width: 300px;
+    width: 280px;
 }
 #header {
-    height: 100px;
+    height: 120px;
+}
+#game-wrap {
+    display: inline-block;
+    /*border: 2px solid black;*/
+    /*max-width: 70%;*/
+    /*min-height: 300px;*/
+    overflow: scroll;
+    position: relative;
+    padding: 0;
+}
+#tooltip {
+    z-index: 9999;
+    position: fixed;
+    background-color: white;
+    padding: 10px;
+    border: 1px solid black;
+    display: none;
+}
+.margin-bottom-20 {
+    margin-bottom: 20px;
+}
+.margin-bottom-40 {
+    margin-bottom: 40px;
+}
+#control-panel .glyphicon {
+    cursor: pointer;
+}
+.glyphicon-success {
+    color: #e84800;
+}
+#counter {
+    font-size: 24px;
 }

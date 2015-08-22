@@ -1,6 +1,8 @@
 var express = require('express');
 var socket = require('socket.io');
 var path = require('path');
+var Ship = require('./game/ship.class');
+var config = require('./game-config');
 //var jade = require('jade');
 var port = (process.env.PORT) ? process.env.PORT : 80;
 var app = express();
@@ -16,9 +18,10 @@ app.use(express.static(__dirname + '/public'));
 io.rooms = {};
 io.sockets.on('connection', function (client) {
     var room;
+    var ships;
     client.on('create', function (username) {
         var regexp = /^(?=.{4,12}$)[A-Za-z0-9]+(?:[_][A-Za-z0-9]+)*$/;
-        if (!regexp.test(username)) {
+        if (!regexp.test(username) || username === null) {
             client.emit('login error', 'Your username is incorrect');
             client.disconnect();
             return;
@@ -28,6 +31,9 @@ io.sockets.on('connection', function (client) {
         room = io.rooms[client.gameID];
         client.username = username;
         room.users.push(client.username);
+
+        //room.users.push('vasya', 'petya', 'grisha', 'dusya', 'nyusya', 'borya', 'lyusya');
+
         client.emit('login', {
             user: username,
             users: room.users,
@@ -44,7 +50,7 @@ io.sockets.on('connection', function (client) {
             return client.disconnect();
         }
         var regexp = /^(?=.{4,12}$)[A-Za-z0-9]+(?:[_][A-Za-z0-9]+)*$/;
-        if (!regexp.test(username)) {
+        if (!regexp.test(username) || username === null) {
             client.emit('login error', 'Your username is incorrect');
             return client.disconnect();
         }
@@ -68,9 +74,51 @@ io.sockets.on('connection', function (client) {
         logUserActions(client.username, 'connected to (' + client.gameID + ')');
     });
     client.on('start', function () {
-        if (!(client.username === room.users[0])) return;
+        if (client.username !== room.users[0]) return;
         room.isStarted = true;
-        io.sockets.in(client.gameID).emit('game started');
+        room.ships = [];
+        room.users.forEach(function (user, i) {
+            var team = i % 2 ? 'right' : 'left';
+            room.ships.push(new Ship(user, team));
+        });
+
+        //room.ships[0].col = 3;
+        //room.ships[0].row = 2;
+        //if (room.ships[1]) {
+        //    room.ships[1].col = 4;
+        //    room.ships[1].row = 3;
+        //    room.ships[1].direction = 'up';
+        //}
+
+        io.sockets.in(client.gameID).emit('game started', {
+            ships: room.ships,
+            config: config
+        });
+    });
+    client.on('round ended', function () {
+        if (client.username !== room.users[0]) return;
+        setTimeout(function () {
+            io.sockets.in(client.gameID).emit('updated ships', {
+                ships: room.ships
+            });
+        }, 1500);
+    });
+    client.on('round data', function (data) {
+        var ship = getShip(room.ships, client.username);
+        var updatingProps = [
+            'direction',
+            'col',
+            'row',
+            'hp',
+            'isDamaged',
+            'isDead',
+            'prevPosition'
+        ];
+        updatingProps.forEach(function (prop) {
+            ship[prop] = data.ship[prop];
+        });
+        ship.roundMoves = data.moves;
+        //console.log(ship.name);
     });
     client.on('leave', function () {
         client.disconnect();
@@ -83,6 +131,8 @@ io.sockets.on('connection', function (client) {
         }
         var index = room.users.indexOf(client.username);
         room.users.splice(index, 1);
+        var ship = getShip(room.ships, client.username);
+        ship.isDead = true;
         client.broadcast.to(client.gameID).emit('disconnected user', {
             user: client.username,
             users: room.users
@@ -114,4 +164,13 @@ function createRoom() {
         return gameID;
     }
     createRoom();
+}
+function getShip(ships, name) {
+    for (var i in ships) {
+        var ship = ships[i];
+        if (ship.name === name) {
+            return ship;
+        }
+    }
+    return false;
 }
