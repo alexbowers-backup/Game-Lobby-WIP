@@ -8,6 +8,10 @@
         lobby.room = {};
 
         lobby.game = {
+            score: {
+                left: 0,
+                right: 0
+            },
             round: {
                 i: 0,
                 seconds: 30,
@@ -125,6 +129,7 @@
                 lobby.game.isStarted = true;
                 gameInit();
                 game.updateShips(data.ships);
+                game.flags = data.flags;
                 //game.userShip.col = 1; ////////////////////////////////////////////////////////////////////////////
                 //game.userShip.row = 1; ////////////////////////////////////////////////////////////////////////////
                 //game.setActiveShip(lobby.room.user);
@@ -140,6 +145,15 @@
                 var i = 0;
                 var interval = $interval(function () {
                     game.runMove(i);
+                    game.flags.forEach(function (flag) {
+                        if (i === 3){
+                            game.checkFlag(flag, true);
+                            lobby.game.score = game.score;
+                        }
+                        else {
+                            game.checkFlag(flag);
+                        }
+                    });
                     i++;
                     if (i === 3)
                         lobby.game.startRound();

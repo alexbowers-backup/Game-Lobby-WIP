@@ -19,6 +19,7 @@ io.rooms = {};
 io.sockets.on('connection', function (client) {
     var room;
     var ships;
+    var flags;
     client.on('create', function (username) {
         var regexp = /^(?=.{4,12}$)[A-Za-z0-9]+(?:[_][A-Za-z0-9]+)*$/;
         if (!regexp.test(username) || username === null) {
@@ -32,7 +33,9 @@ io.sockets.on('connection', function (client) {
         client.username = username;
         room.users.push(client.username);
 
-        //room.users.push('vasya', 'petya', 'grisha', 'dusya', 'nyusya', 'borya', 'lyusya');
+        //room.users.push('vasya', 'petya', 'grisha', 'dusya', 'nyusya', 'borya', 'lyusya', 'asdf', 'asdlfkj',
+        //    'lsdfj', 'asdlfjl', 'aiowenf', 'osdhfa', 'oajkhq', 'osdf92'
+        //);
 
         client.emit('login', {
             user: username,
@@ -74,14 +77,36 @@ io.sockets.on('connection', function (client) {
         logUserActions(client.username, 'connected to (' + client.gameID + ')');
     });
     client.on('start', function () {
+        console.log('start');
         if (client.username !== room.users[0]) return;
         room.isStarted = true;
         room.ships = [];
         room.users.forEach(function (user, i) {
             var team = i % 2 ? 'right' : 'left';
-            room.ships.push(new Ship(user, team));
+            //var team = 'left';
+            coords = i % 2
+                ? generateCoords(config.field.columns - 3, 0, config.field.columns - 1, config.field.rows - 1, room.ships)
+                : generateCoords(0, 0, 2, config.field.rows - 1, room.ships);
+            //coords = generateCoords(0, 0, 2, config.field.rows - 1, room.ships);
+            room.ships.push(new Ship({
+                name: user,
+                team: team,
+                col: coords.col,
+                row: coords.row
+            }));
         });
-
+        room.flags = [];
+        for (var i = 1; i <= 3; i++) {
+            for (var j = 1; j <= config.flag.points[String(i)]; j++) {
+                var coords = generateCoords(6, 1, config.field.columns - 7, config.field.rows - 2, room.flags);
+                room.flags.push({
+                    points: i,
+                    color: 'white',
+                    col: coords.col,
+                    row: coords.row
+                })
+            }
+        }
         //room.ships[0].col = 3;
         //room.ships[0].row = 2;
         //if (room.ships[1]) {
@@ -92,6 +117,7 @@ io.sockets.on('connection', function (client) {
 
         io.sockets.in(client.gameID).emit('game started', {
             ships: room.ships,
+            flags: room.flags,
             config: config
         });
     });
@@ -173,4 +199,27 @@ function getShip(ships, name) {
         }
     }
     return false;
+}
+function generateCoords(minCol, minRow, maxCol, maxRow, arr) {
+    var coords = {};
+    var cols = (maxCol - minCol) + 1;
+    var rows = (maxRow - minRow) + 1;
+    var maxCells = cols * rows;
+    if (maxCells < arr.length) return false;
+
+    whileLoop:
+    while (true) {
+        coords.col = Math.floor(Math.random() * cols) + minCol;
+        coords.row = Math.floor(Math.random() * rows) + minRow;
+        var i = 0;
+        do {
+            var obj = arr[i];
+            if (obj !== undefined && (obj.col === coords.col && obj.row === coords.row)) {
+                continue whileLoop;
+            }
+            i++;
+        }
+        while (i < arr.length);
+        return coords;
+    }
 }

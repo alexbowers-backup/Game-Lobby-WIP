@@ -43,10 +43,12 @@ var gameInit = function () {
                     'Name: <b>' + ship.name + '</b> <br>' +
                     'HP: ' + ship.hp;
                 tooltip.style.display = 'block';
+                ship.showCircle = true;
                 break;
             }
             else {
                 tooltip.style.display = 'none';
+                ship.showCircle = false;
             }
         }
     };
@@ -55,6 +57,11 @@ var gameInit = function () {
         game = {
             ctx: canvas.getContext("2d"),
             ships: [],
+            flags: [],
+            score: {
+                left: 0,
+                right: 0
+            },
             field: {
                 columns: config.field.columns,
                 rows: config.field.rows,
@@ -106,13 +113,16 @@ var gameInit = function () {
                 }
                 else {
                     if (ship.name === game.userShip.name) {
-                        this.ctx.fillStyle = '#00F71D';
+                        this.ctx.fillStyle = config.colors.userColor;
+                        ship.teamColor = config.colors.allyColor;
                     }
                     else if (ship.team === game.userShip.team) {
-                        this.ctx.fillStyle = '#42CAFF';
+                        this.ctx.fillStyle = config.colors.allyColor;
+                        ship.teamColor = config.colors.allyColor;
                     }
                     else {
-                        this.ctx.fillStyle = 'red';
+                        this.ctx.fillStyle = config.colors.enemyColor;
+                        ship.teamColor = config.colors.enemyColor;
                     }
                 }
                 var triangle = new Path2D();
@@ -180,16 +190,53 @@ var gameInit = function () {
 
                 this.ctx.fill(triangle);
             },
+            drawFlag: function (flag) {
+                this.ctx.fillStyle = flag.color;
+                this.ctx.fillRect(
+                    flag.col * this.field.cellWidth() + this.field.cellWidth() * 0.125,
+                    flag.row * this.field.cellHeight() + this.field.cellHeight() * 0.25,
+                    this.field.cellWidth() * 0.750,
+                    this.field.cellHeight() * 0.5
+                );
+                this.ctx.fillStyle = flag.color === 'white' ? 'black': 'white';
+                this.ctx.font = (this.field.cellWidth() * 0.375) + 'px Arial';
+                this.ctx.fillText(
+                    flag.points,
+                    (flag.col * this.field.cellWidth() + this.field.cellWidth() * 0.5) - (this.field.cellWidth() * 0.375) * 0.25,
+                    (flag.row * this.field.cellHeight() + this.field.cellHeight() * 0.5) + (this.field.cellWidth() * 0.375) * 0.33
+                );
+
+                //flag.col * this.field.cellWidth() + this.field.cellHeight() / 4 + shift;
+                //flag.row * this.field.cellHeight() + this.field.cellHeight() / 4;
+            },
+            drawCircle: function (ship) {
+                this.ctx.beginPath();
+                this.ctx.arc(
+                   ship.col * this.field.cellWidth() + this.field.cellWidth() * 0.5,
+                   ship.row * this.field.cellHeight() + this.field.cellHeight() * 0.5,
+                   this.field.cellWidth() * 3.5,
+                   0, 2 * Math.PI,
+                   false
+                );
+                //this.ctx.strokeStyle = 'black';
+                this.ctx.stroke();
+            },
             update: function () {
                 var game = this;
                 game.resolveCollisions();
                 game.drawZones();
                 game.drawGrid();
+                game.flags.forEach(function (flag) {
+                    game.drawFlag(flag);
+                });
                 game.ships.forEach(function (ship, i) {
                     if (ship.isDamaged === true) {
                         game.ships[i].isDamaged = 1;
                     }
                     game.drawShip(ship);
+                    if (ship.showCircle) {
+                        game.drawCircle(ship);
+                    }
                     if (ship.isDamaged !== false) {
                         game.ships[i].isDamaged++;
                     }
@@ -206,6 +253,48 @@ var gameInit = function () {
                     }
                 }
                 return false;
+            },
+            checkFlag: function (flag, lastRound) {
+                var ships = [];
+                var game = this;
+                game.ships.forEach(function (ship) {
+                    var shipX = (ship.col + 0.5) * game.field.cellWidth();
+                    var shipY = (ship.row + 0.5) * game.field.cellHeight();
+                    var flagX = (flag.col + 0.5) * game.field.cellWidth();
+                    var flagY = (flag.row + 0.5) * game.field.cellHeight();
+                    var flagR = game.field.cellWidth() * 3.5;
+                    if (Math.pow(shipX - flagX, 2) + Math.pow(shipY - flagY, 2) < Math.pow(flagR, 2)) {
+                        ships.push(ship);
+                    }
+                });
+                var teams = {
+                    left: false,
+                    right: false
+                };
+                var points = {
+                    left: 0,
+                    right: 0
+                };
+                var div = document.getElementById('message-wrap');
+                div.innerHTML = '';
+                flag.color = 'white';
+                ships.forEach(function (ship) {
+                    div.innerHTML += ship.name + '<br>';
+                    teams[ship.team] = true;
+                    if (teams.left && teams.right) {
+                        flag.color = 'black';
+                        points.left = 0;
+                        points.right = 0;
+                    }
+                    else {
+                        flag.color = ship.teamColor;
+                        if (lastRound) {
+                            points[ship.team] = flag.points;
+                        }
+                    }
+                });
+                game.score.left += points.left;
+                game.score.right += points.right;
             },
             checkCollision: function (col, row) {
                 var ships = [];
@@ -226,7 +315,7 @@ var gameInit = function () {
                             ships.forEach(function (ship) {
                                 if (ship.turning)
                                     ship.turning = false;
-                                if (ship.roundMoves[move].move !== 'stay')
+                                if (ship.roundMoves[move].move !== undefined && ship.roundMoves[move].move !== 'stay')
                                     ship.restorePosition();
                                 ship.takeDamage(ship.bumpDamage);
                             });

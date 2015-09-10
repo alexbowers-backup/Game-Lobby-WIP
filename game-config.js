@@ -11,6 +11,19 @@ var config = {
         cannonRange: 3, //range of cannons in cells
         cannonChargesPerSide: 2,
         bumpDamage: 2
+    },
+    flag: {
+        //number of flags by points
+        points: {
+            1: 4,
+            2: 3,
+            3: 2
+        }
+    },
+    colors: {
+        userColor: '#00F71D',
+        allyColor: '#42CAFF',
+        enemyColor: 'red'
     }
 };
 module.exports = config;
