@@ -14,10 +14,53 @@
             },
             round: {
                 i: 0,
-                seconds: 30,
                 timer: 0,
+                interval: null,
                 moves: []
 
+            },
+            over: false,
+            scrollToShip: function (ship) {
+                var gameWrap = $('#game-wrap');
+                var center = gameWrap.height() / 2;
+                var shipY =  (ship.row + 0.5) * game.field.cellHeight();
+                var scrollTo = shipY - center;
+                var props = {
+                    scrollTop: scrollTo > 0 ? scrollTo : 0,
+                    scrollLeft: ship.team === 'right' ? game.field.width : 0
+                };
+                gameWrap.animate(props, {duration: 2000});
+            },
+            reset: function () {
+                this.round.i = 0;
+                this.over = false;
+                this.score = {
+                    left: 0,
+                    right: 0
+                };
+                $interval.cancel(this.round.interval);
+                window.canvasAnimation = false;
+            },
+            finish: function () {
+                if (this.score.left > this.score.right) {
+                    this.overMessage = game.userShip.team === 'left'
+                        ? 'You won'
+                        : 'You lost';
+                }
+                else if (this.score.right > this.score.left) {
+                    this.overMessage = game.userShip.team === 'right'
+                        ? 'You won'
+                        : 'You lost';
+                }
+                else {
+                    this.overMessage = 'Draw';
+                }
+                $interval(function () {
+                    lobby.game.isStarted = false;
+                    lobby.game.over = true;
+                    tooltip.style.display = 'none';
+                }, 2000, 1);
+                this.reset();
             },
             resetMoves: function () {
                 this.round.moves = [
@@ -40,15 +83,13 @@
                 ];
             },
             startRound: function () {
-                var lobbyGame = this;
-                lobbyGame.round.i++;
-                lobbyGame.round.timer = lobbyGame.round.seconds;
+                lobby.game.round.i++;
+                lobby.game.round.timer = config.game.roundTimer;
                 this.resetMoves();
-
-                var interval = $interval(function () {
-                    lobbyGame.round.timer--;
-                    if (lobbyGame.round.timer < 1) {
-                        $interval.cancel(interval);
+                lobby.game.round.interval = $interval(function () {
+                    lobby.game.round.timer--;
+                    if (lobby.game.round.timer < 1) {
+                        $interval.cancel(lobby.game.round.interval);
                         if (lobby.room.isMaster)
                             socket.emit('round ended');
                         socket.emit('round data', {
@@ -127,21 +168,16 @@
             socket.on('game started', function (data) {
                 config = data.config;
                 lobby.game.isStarted = true;
+                lobby.game.reset();
                 gameInit();
                 game.updateShips(data.ships);
+                lobby.game.userTeam = game.userShip.team;
                 game.flags = data.flags;
-                //game.userShip.col = 1; ////////////////////////////////////////////////////////////////////////////
-                //game.userShip.row = 1; ////////////////////////////////////////////////////////////////////////////
-                //game.setActiveShip(lobby.room.user);
-                lobby.game.round.i = 0;
                 lobby.game.startRound();
-                //game.temp.active = ships[0];
-                //game.temp.team = ships[0].team;
-                //console.log(game);
+                lobby.game.scrollToShip(game.userShip);
             });
-            socket.on('updated ships', function (data) {
+            socket.on('next round', function (data) {
                 game.updateShips(data.ships);
-                //game.setActiveShip(lobby.room.user);
                 var i = 0;
                 var interval = $interval(function () {
                     game.runMove(i);
@@ -155,8 +191,13 @@
                         }
                     });
                     i++;
-                    if (i === 3)
+                    if (i === 4) {
+                        if (lobby.game.round.i === config.game.maxRounds) {
+                            lobby.game.finish();
+                            return;
+                        }
                         lobby.game.startRound();
+                    }
                 }, 500, 4);
             });
             socket.on('connected user', function (username) {
@@ -177,6 +218,7 @@
             socket.disconnect();
             lobby.room.id = null;
             lobby.game.isStarted = false;
+            lobby.game.reset();
         };
 
         lobby.room.start = function () {

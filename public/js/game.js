@@ -2,15 +2,20 @@
 var game;
 var username;
 var config;
+var tooltip;
+var safeZoneImage = new Image();
+var openSeaImage = new Image();
+safeZoneImage.src = 'images/safe-zone.png';
+openSeaImage.src = 'images/open-sea.png';
 var gameInit = function () {
     var canvasWrap = document.getElementById('game-wrap');
     var canvas = document.getElementById("game");
-    var tooltip = document.getElementById('tooltip');
     var curCol, curRow;
     var safeZoneImage = new Image();
     var openSeaImage = new Image();
     safeZoneImage.src = 'images/safe-zone.png';
     openSeaImage.src = 'images/open-sea.png';
+    tooltip = document.getElementById('tooltip');
     canvas.width = config.field.width;
     canvas.height = config.field.height;
     canvas.onmousemove = function showTooltip(e) {
@@ -275,11 +280,8 @@ var gameInit = function () {
                     left: 0,
                     right: 0
                 };
-                var div = document.getElementById('message-wrap');
-                div.innerHTML = '';
                 flag.color = 'white';
                 ships.forEach(function (ship) {
-                    div.innerHTML += ship.name + '<br>';
                     teams[ship.team] = true;
                     if (teams.left && teams.right) {
                         flag.color = 'black';
@@ -558,10 +560,13 @@ var gameInit = function () {
     var lastTime;
     var requiredElapsed = 40;
 
+    window.canvasAnimation = true;
     requestAnimationFrame(loop);
 
     function loop(now) {
-        requestAnimationFrame(loop);
+        if (window.canvasAnimation) {
+            requestAnimationFrame(loop);
+        }
 
         if(!lastTime){
             lastTime = now;

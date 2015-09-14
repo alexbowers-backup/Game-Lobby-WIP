@@ -111,3 +111,17 @@ form input[type="text"] {
 #counter {
     font-size: 24px;
 }
+#game-over {
+    position: fixed;
+    margin: auto;
+    top: 25%;
+    left: 0;
+    right: 0;
+    padding: 20px;
+    z-index: 999;
+    width: 200px;
+    background-color: white;
+}
+.text-bold {
+    font-weight: bold;
+}

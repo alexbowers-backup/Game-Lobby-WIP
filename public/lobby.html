@@ -123,11 +123,11 @@
 				<div>
 					<h4 class="text-center"><b>Score:</b></h4>
 					<div class="col-md-6 text-center">
-						Team 1 <br>
+						<span ng-class="{'text-bold':lobby.game.userTeam === 'left'}">Team 1</span> <br>
 						{{lobby.game.score.left}}
 					</div>
 					<div class="col-md-6 text-center">
-						Team 2 <br>
+						<span ng-class="{'text-bold':lobby.game.userTeam === 'right'}">Team 2</span> <br>
 						{{lobby.game.score.right}}
 					</div>
 				</div>
@@ -167,6 +167,15 @@
 					</p>
 				</div>
 			</div>
+		</div>
+	</div>
+	<div id="game-over" class="shadow block" ng-show="lobby.game.over">
+		<div class="text-center">
+			<h3>{{lobby.game.overMessage}}</h3>
+			<span ng-class="{'text-bold':lobby.game.userTeam === 'left'}">Team 1</span>: {{lobby.game.score.left}} points <br>
+			<span ng-class="{'text-bold':lobby.game.userTeam === 'right'}">Team 2</span>: {{lobby.game.score.right}} points <br>
+			<br>
+			<button class="btn btn-info" ng-click="lobby.game.over = false">Close</button>
 		</div>
 	</div>
 </body>

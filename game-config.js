@@ -24,6 +24,11 @@ var config = {
         userColor: '#00F71D',
         allyColor: '#42CAFF',
         enemyColor: 'red'
+    },
+    game: {
+        maxRounds: 3,
+        roundTimer: 15  //in seconds
     }
+
 };
 module.exports = config;

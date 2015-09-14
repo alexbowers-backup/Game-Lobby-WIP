@@ -124,7 +124,7 @@ io.sockets.on('connection', function (client) {
     client.on('round ended', function () {
         if (client.username !== room.users[0]) return;
         setTimeout(function () {
-            io.sockets.in(client.gameID).emit('updated ships', {
+            io.sockets.in(client.gameID).emit('next round', {
                 ships: room.ships
             });
         }, 1500);
