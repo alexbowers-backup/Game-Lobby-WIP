@@ -25,10 +25,15 @@ var config = {
         allyColor: '#42CAFF',
         enemyColor: 'red'
     },
-    game: {
-        maxRounds: 3,
-        roundTimer: 15  //in seconds
+    round: {
+        number: 5,
+        timer: 15  //in seconds
+    },
+    wind: {
+        numberRange: [10, 15] // min and max number of winds
+    },
+    whirlpool: {
+        number: 5
     }
-
 };
 module.exports = config;

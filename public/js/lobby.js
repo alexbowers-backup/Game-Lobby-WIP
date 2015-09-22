@@ -60,7 +60,6 @@
                     lobby.game.over = true;
                     tooltip.style.display = 'none';
                 }, 2000, 1);
-                this.reset();
             },
             resetMoves: function () {
                 this.round.moves = [
@@ -84,7 +83,7 @@
             },
             startRound: function () {
                 lobby.game.round.i++;
-                lobby.game.round.timer = config.game.roundTimer;
+                lobby.game.round.timer = config.round.timer;
                 this.resetMoves();
                 lobby.game.round.interval = $interval(function () {
                     lobby.game.round.timer--;
@@ -171,16 +170,23 @@
                 lobby.game.reset();
                 gameInit();
                 game.updateShips(data.ships);
-                lobby.game.userTeam = game.userShip.team;
                 game.flags = data.flags;
+                game.winds = data.winds;
+                game.whirlpools = data.whirlpools;
+                lobby.game.userTeam = game.userShip.team;
                 lobby.game.startRound();
                 lobby.game.scrollToShip(game.userShip);
+
             });
             socket.on('next round', function (data) {
                 game.updateShips(data.ships);
                 var i = 0;
                 var interval = $interval(function () {
                     game.runMove(i);
+                    //game.winds.forEach(function (wind) {
+                    //    console.log(2);
+                    //    game.checkWind(wind);
+                    //});
                     game.flags.forEach(function (flag) {
                         if (i === 3){
                             game.checkFlag(flag, true);
@@ -192,7 +198,7 @@
                     });
                     i++;
                     if (i === 4) {
-                        if (lobby.game.round.i === config.game.maxRounds) {
+                        if (lobby.game.round.i === config.round.number) {
                             lobby.game.finish();
                             return;
                         }
@@ -224,6 +230,14 @@
         lobby.room.start = function () {
             socket.emit('start');
         };
+
+        ///////////////////// DEVELOPMENT ///////////////////////////
+
+            //lobby.form.user = 'vasya';
+            //lobby.submit('create');
+            //lobby.room.start();
+
+        ///////////////////// DEVELOPMENT ///////////////////////////
     });
 
     app.factory('socket', function ($rootScope) {

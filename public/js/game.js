@@ -5,8 +5,10 @@ var config;
 var tooltip;
 var safeZoneImage = new Image();
 var openSeaImage = new Image();
+var whirlpoolImage = new Image();
 safeZoneImage.src = 'images/safe-zone.png';
 openSeaImage.src = 'images/open-sea.png';
+whirlpoolImage.src = 'images/whirlpool.png';
 var gameInit = function () {
     var canvasWrap = document.getElementById('game-wrap');
     var canvas = document.getElementById("game");
@@ -63,6 +65,8 @@ var gameInit = function () {
             ctx: canvas.getContext("2d"),
             ships: [],
             flags: [],
+            winds: [],
+            whirlpoools: [],
             score: {
                 left: 0,
                 right: 0
@@ -98,7 +102,13 @@ var gameInit = function () {
             drawZones: function () {
                 for (var i = 0; i < game.field.columns; i++) {
                     for (var j = 0; j < config.field.rows; j++) {
-                        this.ctx.drawImage(safeZoneImage, this.field.cellWidth() * i, this.field.cellHeight() * j);
+                        this.ctx.drawImage(
+                            safeZoneImage,
+                            this.field.cellWidth() * i,
+                            this.field.cellHeight() * j,
+                            this.field.cellWidth(),
+                            this.field.cellHeight()
+                        );
                     }
                     if (i === 2) {
                         i = game.field.columns - 4;
@@ -106,7 +116,13 @@ var gameInit = function () {
                 }
                 for (var i = 3; i < game.field.columns - 3; i++) {
                     for (var j = 0; j < config.field.rows; j++) {
-                        this.ctx.drawImage(openSeaImage, this.field.cellWidth() * i, this.field.cellHeight() * j);
+                        this.ctx.drawImage(
+                            openSeaImage,
+                            this.field.cellWidth() * i,
+                            this.field.cellHeight() * j,
+                            this.field.cellWidth(),
+                            this.field.cellHeight()
+                        );
                     }
 
                 }
@@ -214,6 +230,133 @@ var gameInit = function () {
                 //flag.col * this.field.cellWidth() + this.field.cellHeight() / 4 + shift;
                 //flag.row * this.field.cellHeight() + this.field.cellHeight() / 4;
             },
+            drawWhirlpool: function (whirlpool) {
+                this.ctx.drawImage(
+                    whirlpoolImage,
+                    this.field.cellWidth() * whirlpool.col[0],
+                    this.field.cellHeight() * whirlpool.row[0],
+                    this.field.cellWidth() * 2,
+                    this.field.cellHeight() * 2
+                );
+            },
+            drawWind: function (wind) {
+                this.ctx.fillStyle = 'black';
+                this.ctx.fillStyle = 'black';
+                this.ctx.lineWidth = 4;
+                var arrow = new Path2D();
+                switch (wind.direction) {
+                    case 'right':
+                        arrow.moveTo(
+                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 6,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 4
+                        );
+                        arrow.lineTo(
+                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 2,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 2
+                        );
+                        arrow.lineTo(
+                            wind.col * this.field.cellWidth() + this.field.cellWidth() / 6,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() * 0.75
+                        );
+
+                        arrow.moveTo(
+                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 2,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 4
+                        );
+                        arrow.lineTo(
+                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 6 * 5,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 2
+                        );
+                        arrow.lineTo(
+                            wind.col * this.field.cellWidth() + this.field.cellWidth() / 2,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() * 0.75
+                        );
+                        break;
+                    case 'left':
+                        arrow.moveTo(
+                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 2,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 4
+                        );
+                        arrow.lineTo(
+                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 6,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 2
+                        );
+                        arrow.lineTo(
+                            wind.col * this.field.cellWidth() + this.field.cellWidth() / 2,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() * 0.75
+                        );
+
+                        arrow.moveTo(
+                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 6 * 5,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 4
+                        );
+                        arrow.lineTo(
+                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 2,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 2
+                        );
+                        arrow.lineTo(
+                            wind.col * this.field.cellWidth() + this.field.cellWidth() / 6 * 5,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() * 0.75
+                        );
+                        break;
+                    case 'up':
+                        arrow.moveTo(
+                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 4,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 2
+                        );
+                        arrow.lineTo(
+                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 2,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 6
+                        );
+                        arrow.lineTo(
+                            wind.col * this.field.cellWidth() + this.field.cellWidth() * 0.75,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 2
+                        );
+
+                        arrow.moveTo(
+                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 4,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 6 * 5
+                        );
+                        arrow.lineTo(
+                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 2,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 2
+                        );
+                        arrow.lineTo(
+                            wind.col * this.field.cellWidth() + this.field.cellWidth() * 0.75,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 6 * 5
+                        );
+                        break;
+                    case 'down':
+                        arrow.moveTo(
+                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 4,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 6
+                        );
+                        arrow.lineTo(
+                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 2,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 2
+                        );
+                        arrow.lineTo(
+                            wind.col * this.field.cellWidth() + this.field.cellWidth() * 0.75,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 6
+                        );
+
+                        arrow.moveTo(
+                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 4,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 2
+                        );
+                        arrow.lineTo(
+                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 2,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 6 * 5
+                        );
+                        arrow.lineTo(
+                            wind.col * this.field.cellWidth() + this.field.cellWidth() * 0.75,
+                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 2
+                        );
+                        break;
+                }
+                this.ctx.stroke(arrow);
+                this.ctx.lineWidth = 1;
+            },
             drawCircle: function (ship) {
                 this.ctx.beginPath();
                 this.ctx.arc(
@@ -228,11 +371,17 @@ var gameInit = function () {
             },
             update: function () {
                 var game = this;
-                game.resolveCollisions();
+                //game.resolveCollisions();
                 game.drawZones();
                 game.drawGrid();
                 game.flags.forEach(function (flag) {
                     game.drawFlag(flag);
+                });
+                game.winds.forEach(function (wind) {
+                    game.drawWind(wind);
+                });
+                game.whirlpools.forEach(function (whirlpool) {
+                    game.drawWhirlpool(whirlpool);
                 });
                 game.ships.forEach(function (ship, i) {
                     if (ship.isDamaged === true) {
@@ -317,7 +466,10 @@ var gameInit = function () {
                             ships.forEach(function (ship) {
                                 if (ship.turning)
                                     ship.turning = false;
-                                if (ship.roundMoves[move].move !== undefined && ship.roundMoves[move].move !== 'stay')
+                                ship.roundMoves = ship.roundMoves || [{}, {}, {}, {}];
+                                if (ship.roundMoves[move].move !== 'stay')
+                                    ship.restorePosition();
+                                if (ship.roundMoves[move].secondary !== undefined && ship.roundMoves[move].secondary.type === 'wind')
                                     ship.restorePosition();
                                 ship.takeDamage(ship.bumpDamage);
                             });
@@ -373,6 +525,30 @@ var gameInit = function () {
                             return;
                     }
                 });
+                game.winds.forEach(function (wind) {
+                    game.ships.forEach(function (ship) {
+                        if (ship.col === wind.col && ship.row === wind.row) {
+                            setTimeout(function () {
+                                ship.roundMoves[move].secondary = wind;
+                                ship.windMove(wind);
+                                game.resolveCollisions(move);
+                            }, 200);
+                        }
+                    });
+                });
+                game.whirlpools.forEach(function (whirlpool) {
+                    game.ships.forEach(function (ship) {
+                        for (var i = 0; i < 4; i++) {
+                            if (ship.col === whirlpool.col[i] && ship.row === whirlpool.row[i]) {
+                                var j = i;
+                                setTimeout(function () {
+                                    ship.roundMoves[move].secondary = whirlpool;
+                                    ship.whirlpoolMove(whirlpool, j);
+                                }, 200);
+                            }
+                        }
+                    });
+                });
             },
             getShipByName: function (name) {
                 for (var i in this.ships) {
@@ -398,6 +574,45 @@ var gameInit = function () {
                         if (dirIndex == -1) dirIndex = 3;
                         else if(dirIndex == 4) dirIndex = 0;
                         this.direction = directions[dirIndex];
+                    };
+                    ship.windMove = function (wind) {
+                        this.savePosition();
+                        switch (wind.direction) {
+                            case 'up':
+                                if (this.row === 0) {
+                                    this.takeDamage(this.bumpDamage);
+                                    return false;
+                                }
+                                this.row--;
+                                break;
+                            case 'down':
+                                if (this.row === config.field.rows - 1) {
+                                    this.takeDamage(this.bumpDamage);
+                                    return false;
+                                }
+                                this.row++;
+                                break;
+                            case 'left':
+                                if (this.col === 0) {
+                                    this.takeDamage(this.bumpDamage);
+                                    return false;
+                                }
+                                this.col--;
+                                break;
+                            case 'right':
+                                if (this.col === config.field.columns - 1) {
+                                    this.takeDamage(this.bumpDamage);
+                                    return false;
+                                }
+                                this.col++;
+                                break;
+                        }
+                    };
+                    ship.whirlpoolMove = function (whirlpool, i) {
+                        i = (i + 2) % 4;
+                        this.col = whirlpool.col[i];
+                        this.row = whirlpool.row[i];
+                        this.rotate('right');
                     };
                     ship.forwardMove = function () {
                         this.savePosition();
@@ -574,9 +789,9 @@ var gameInit = function () {
         var elapsed = now - lastTime;
 
         if(elapsed > requiredElapsed){
-            //console.log(game.ships);
             game.update();
             lastTime = now;
         }
     }
+
 };

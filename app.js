@@ -2,6 +2,9 @@ var express = require('express');
 var socket = require('socket.io');
 var path = require('path');
 var Ship = require('./game/ship.class');
+var Flag = require('./game/flag.class');
+var Wind = require('./game/wind.class');
+var Whirlpool = require('./game/whirlpool.class');
 var config = require('./game-config');
 //var jade = require('jade');
 var port = (process.env.PORT) ? process.env.PORT : 80;
@@ -33,8 +36,10 @@ io.sockets.on('connection', function (client) {
         client.username = username;
         room.users.push(client.username);
 
-        //room.users.push('vasya', 'petya', 'grisha', 'dusya', 'nyusya', 'borya', 'lyusya', 'asdf', 'asdlfkj',
-        //    'lsdfj', 'asdlfjl', 'aiowenf', 'osdhfa', 'oajkhq', 'osdf92'
+        //room.users.push(
+            //'grisha', 'dusya', 'nyusya', 'borya', 'lyusya', 'asdf', 'asdlfkj',
+            //'lsdfj', 'asdlfjl', 'aiowenf', 'osdhfa', 'oajkhq', 'osdf92',
+            //'petya'
         //);
 
         client.emit('login', {
@@ -85,8 +90,20 @@ io.sockets.on('connection', function (client) {
             var team = i % 2 ? 'right' : 'left';
             //var team = 'left';
             coords = i % 2
-                ? generateCoords(config.field.columns - 3, 0, config.field.columns - 1, config.field.rows - 1, room.ships)
-                : generateCoords(0, 0, 2, config.field.rows - 1, room.ships);
+                ? generateCoords({
+                    minCol: config.field.columns - 3,
+                    minRow: 0,
+                    maxCol: config.field.columns - 1,
+                    maxRow: config.field.rows - 1,
+                    objects: room.ships
+                })
+                : generateCoords({
+                    minCol: 0,
+                    minRow: 0,
+                    maxCol: 2,
+                    maxRow: config.field.rows - 1,
+                    objects: room.ships
+                });
             //coords = generateCoords(0, 0, 2, config.field.rows - 1, room.ships);
             room.ships.push(new Ship({
                 name: user,
@@ -96,28 +113,70 @@ io.sockets.on('connection', function (client) {
             }));
         });
         room.flags = [];
-        for (var i = 1; i <= 3; i++) {
-            for (var j = 1; j <= config.flag.points[String(i)]; j++) {
-                var coords = generateCoords(6, 1, config.field.columns - 7, config.field.rows - 2, room.flags);
-                room.flags.push({
-                    points: i,
+        for (var i in config.flag.points) {
+            for (var j = 1; j <= config.flag.points[i]; j++) {
+                var coords = generateCoords({
+                    minCol: 6,
+                    minRow: 1,
+                    maxCol: config.field.columns - 7,
+                    maxRow: config.field.rows - 2,
+                    objects: room.flags
+                });
+                room.flags.push(new Flag({
+                    points: Number(i),
                     color: 'white',
                     col: coords.col,
                     row: coords.row
-                })
+                }))
             }
         }
-        //room.ships[0].col = 3;
-        //room.ships[0].row = 2;
-        //if (room.ships[1]) {
-        //    room.ships[1].col = 4;
-        //    room.ships[1].row = 3;
-        //    room.ships[1].direction = 'up';
-        //}
+        room.winds = [];
+        var windsNumber = Math.floor(Math.random() * (config.wind.numberRange[1] - config.wind.numberRange[0] + 1)) + config.wind.numberRange[0];
+        var directions = ['left', 'right', 'up', 'down'];
+        for (var i = 0; i < windsNumber; i++) {
+            var coords = generateCoords({
+                minCol: 3,
+                minRow: 0,
+                maxCol: config.field.columns - 4,
+                maxRow: config.field.rows - 1,
+                objects: room.flags.concat(room.winds)
+            });
+            room.winds.push(new Wind({
+                direction: directions[Math.floor(Math.random() * 4)],
+                col: coords.col,
+                row: coords.row
+            }));
+        }
+        room.whirlpools = [];
+        for (var i = 0; i < config.whirlpool.number; i++) {
+            var coords = generateCoords({
+                minCol: 3,
+                minRow: 0,
+                maxCol: config.field.columns - 5,
+                maxRow: config.field.rows - 2,
+                objects: room.flags.concat(room.winds, room.whirlpools),
+                mode: 'whirlpool'
+            });
+            room.whirlpools.push(new Whirlpool({
+                col: coords.col,
+                row: coords.row
+            }));
+        }
 
+        ////////////////////////// DEVELOPMENT /////////////////////////////////
+        //room.ships[0].col = 1;
+        //room.ships[0].row = 1;
+        //room.winds[0].col = 3;
+        //room.winds[0].row = 1;
+        //room.winds[0].direction = 'down';
+        //room.ships[1].col = 3;
+        //room.ships[1].row = 0;
+        ////////////////////////// DEVELOPMENT /////////////////////////////////
         io.sockets.in(client.gameID).emit('game started', {
             ships: room.ships,
             flags: room.flags,
+            winds: room.winds,
+            whirlpools: room.whirlpools,
             config: config
         });
     });
@@ -200,26 +259,75 @@ function getShip(ships, name) {
     }
     return false;
 }
-function generateCoords(minCol, minRow, maxCol, maxRow, arr) {
+function generateCoords(props) {
     var coords = {};
-    var cols = (maxCol - minCol) + 1;
-    var rows = (maxRow - minRow) + 1;
+    var cols = (props.maxCol - props.minCol) + 1;
+    var rows = (props.maxRow - props.minRow) + 1;
     var maxCells = cols * rows;
-    if (maxCells < arr.length) return false;
+    if (maxCells < props.objects.length) return false;
 
+    if (props.mode === 'whirlpool') {
+        whileLoop:
+            while (true) {
+                coords.col = Math.floor(Math.random() * cols) + props.minCol;
+                coords.row = Math.floor(Math.random() * rows) + props.minRow;
+                coords.col = [
+                    coords.col,
+                    coords.col + 1,
+                    coords.col + 1,
+                    coords.col
+                ];
+                coords.row = [
+                    coords.row,
+                    coords.row,
+                    coords.row + 1,
+                    coords.row + 1
+                ];
+                var i = 0;
+                do {
+                    var obj = props.objects[i] || {};
+                    for (var k = 0; k < 4; k++) {
+                        if (obj.type === 'whirlpool') {
+                            for (var j = 0; j < 4; j++) {
+                                if (obj.col[j] === coords.col[k] && obj.row[j] === coords.row[k]) {
+                                    continue whileLoop;
+                                }
+                            }
+                        }
+                        else {
+                            if (obj.col === coords.col[k] && obj.row === coords.row[k]) {
+                                continue whileLoop;
+                            }
+                        }
+                    }
+                    i++;
+                }
+                while (i < props.objects.length);
+                return coords;
+            }
+    }
     whileLoop:
     while (true) {
-        coords.col = Math.floor(Math.random() * cols) + minCol;
-        coords.row = Math.floor(Math.random() * rows) + minRow;
+        coords.col = Math.floor(Math.random() * cols) + props.minCol;
+        coords.row = Math.floor(Math.random() * rows) + props.minRow;
         var i = 0;
         do {
-            var obj = arr[i];
-            if (obj !== undefined && (obj.col === coords.col && obj.row === coords.row)) {
-                continue whileLoop;
+            var obj = props.objects[i] || {};
+            if (obj.type === 'whirlpool') {
+                for (var j = 0; j < 4; j++) {
+                    if (obj.col[j] === coords.col && obj.row[j] === coords.row) {
+                        continue whileLoop;
+                    }
+                }
+            }
+            else {
+                if (obj !== undefined && (obj.col === coords.col && obj.row === coords.row)) {
+                    continue whileLoop;
+                }
             }
             i++;
         }
-        while (i < arr.length);
+        while (i < props.objects.length);
         return coords;
     }
 }
