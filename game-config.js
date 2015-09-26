@@ -34,6 +34,9 @@ var config = {
     },
     whirlpool: {
         number: 5
+    },
+    rock: {
+        number: 10
     }
 };
 module.exports = config;

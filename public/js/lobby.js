@@ -172,6 +172,7 @@
                 game.updateShips(data.ships);
                 game.flags = data.flags;
                 game.winds = data.winds;
+                game.rocks = data.rocks;
                 game.whirlpools = data.whirlpools;
                 lobby.game.userTeam = game.userShip.team;
                 lobby.game.startRound();
@@ -183,6 +184,10 @@
                 var i = 0;
                 var interval = $interval(function () {
                     game.runMove(i);
+                    //var j = i;
+                    //$interval(function () {
+                    //    game.runSecondaryMove(j);
+                    //}, 200, 1);
                     //game.winds.forEach(function (wind) {
                     //    console.log(2);
                     //    game.checkWind(wind);

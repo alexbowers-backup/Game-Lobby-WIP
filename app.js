@@ -4,6 +4,7 @@ var path = require('path');
 var Ship = require('./game/ship.class');
 var Flag = require('./game/flag.class');
 var Wind = require('./game/wind.class');
+var Rock = require('./game/rock.class');
 var Whirlpool = require('./game/whirlpool.class');
 var config = require('./game-config');
 //var jade = require('jade');
@@ -21,8 +22,6 @@ app.use(express.static(__dirname + '/public'));
 io.rooms = {};
 io.sockets.on('connection', function (client) {
     var room;
-    var ships;
-    var flags;
     client.on('create', function (username) {
         var regexp = /^(?=.{4,12}$)[A-Za-z0-9]+(?:[_][A-Za-z0-9]+)*$/;
         if (!regexp.test(username) || username === null) {
@@ -162,20 +161,41 @@ io.sockets.on('connection', function (client) {
                 row: coords.row
             }));
         }
+        room.rocks = [];
+        for (var i = 0; i < config.rock.number; i++) {
+            var coords = generateCoords({
+                minCol: 3,
+                minRow: 0,
+                maxCol: config.field.columns - 4,
+                maxRow: config.field.rows - 1,
+                objects: room.flags.concat(room.winds, room.rocks)
+            });
+            room.rocks.push(new Rock({
+                col: coords.col,
+                row: coords.row
+            }))
+        }
 
         ////////////////////////// DEVELOPMENT /////////////////////////////////
-        //room.ships[0].col = 1;
-        //room.ships[0].row = 1;
+        //room.ships[0].col = 3;
+        //room.ships[0].row = 3;
+        //room.ships[0].direction = 'up';
         //room.winds[0].col = 3;
         //room.winds[0].row = 1;
         //room.winds[0].direction = 'down';
         //room.ships[1].col = 3;
         //room.ships[1].row = 0;
+        //room.rocks[0].col = 4;
+        //room.rocks[0].row = 2;
+        //room.whirlpools[0].col = [3, 4, 4, 3];
+        //room.whirlpools[0].row = [1, 1, 2, 2];
         ////////////////////////// DEVELOPMENT /////////////////////////////////
+
         io.sockets.in(client.gameID).emit('game started', {
             ships: room.ships,
             flags: room.flags,
             winds: room.winds,
+            rocks: room.rocks,
             whirlpools: room.whirlpools,
             config: config
         });

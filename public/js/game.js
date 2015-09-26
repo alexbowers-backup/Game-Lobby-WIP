@@ -66,7 +66,8 @@ var gameInit = function () {
             ships: [],
             flags: [],
             winds: [],
-            whirlpoools: [],
+            rocks: [],
+            whirlpools: [],
             score: {
                 left: 0,
                 right: 0
@@ -230,6 +231,22 @@ var gameInit = function () {
                 //flag.col * this.field.cellWidth() + this.field.cellHeight() / 4 + shift;
                 //flag.row * this.field.cellHeight() + this.field.cellHeight() / 4;
             },
+            drawRock: function (rock) {
+                this.ctx.beginPath();
+                this.ctx.arc(
+                    rock.col * this.field.cellWidth() + this.field.cellWidth() * 0.5,
+                    rock.row * this.field.cellHeight() + this.field.cellHeight() * 0.5,
+                    this.field.cellWidth() * 0.3,
+                    0,
+                    2 * Math.PI,
+                    false
+                );
+                this.ctx.fillStyle = 'white';
+                this.ctx.fill();
+                this.ctx.lineWidth = 3;
+                this.ctx.stroke();
+                this.ctx.lineWidth = 1;
+            },
             drawWhirlpool: function (whirlpool) {
                 this.ctx.drawImage(
                     whirlpoolImage,
@@ -363,7 +380,8 @@ var gameInit = function () {
                    ship.col * this.field.cellWidth() + this.field.cellWidth() * 0.5,
                    ship.row * this.field.cellHeight() + this.field.cellHeight() * 0.5,
                    this.field.cellWidth() * 3.5,
-                   0, 2 * Math.PI,
+                   0,
+                   2 * Math.PI,
                    false
                 );
                 //this.ctx.strokeStyle = 'black';
@@ -382,6 +400,9 @@ var gameInit = function () {
                 });
                 game.whirlpools.forEach(function (whirlpool) {
                     game.drawWhirlpool(whirlpool);
+                });
+                game.rocks.forEach(function (rock) {
+                    game.drawRock(rock);
                 });
                 game.ships.forEach(function (ship, i) {
                     if (ship.isDamaged === true) {
@@ -447,33 +468,42 @@ var gameInit = function () {
                 game.score.left += points.left;
                 game.score.right += points.right;
             },
-            checkCollision: function (col, row) {
-                var ships = [];
+            findCollisions: function () {
+                var collidedShips = [];
                 for (var i in this.ships) {
-                    var ship = this.ships[i];
-                    if (ship.col === col && ship.row === row) {
-                        ships.push(ship);
+                    var ship1 = this.ships[i];
+                    for (var j = Number(i) + 1; j < this.ships.length; j++) {
+                        var ship2 = this.ships[j];
+                        if (ship1.col === ship2.col && ship1.row === ship2.row) {
+                            collidedShips.push(ship1, ship2);
+                        }
                     }
+                    this.rocks.forEach(function (rock) {
+                        if (ship1.col === rock.col && ship1.row === rock.row) {
+                            collidedShips.push(ship1);
+                        }
+                    });
                 }
-                return ships.length > 1 ? ships : false;
+                return collidedShips;
             },
             resolveCollisions: function (move) {
-                var ships = [];
-                for (var i = 0; i < config.field.columns; i++) {
-                    for (var j = 0; j < config.field.rows; j++) {
-                        if (ships = this.checkCollision(i, j)) {
-
-                            ships.forEach(function (ship) {
-                                if (ship.turning)
-                                    ship.turning = false;
-                                ship.roundMoves = ship.roundMoves || [{}, {}, {}, {}];
-                                if (ship.roundMoves[move].move !== 'stay')
-                                    ship.restorePosition();
-                                if (ship.roundMoves[move].secondary !== undefined && ship.roundMoves[move].secondary.type === 'wind')
-                                    ship.restorePosition();
-                                ship.takeDamage(ship.bumpDamage);
-                            });
+                var ships = this.findCollisions();
+                if (ships.length) {
+                    for (var i in ships) {
+                        var ship = ships[i];
+                        if (ship.turning)
+                            ship.turning = false;
+                        ship.roundMoves = ship.roundMoves || [{}, {}, {}, {}];
+                        if (ship.roundMoves[move].move !== 'stay')
+                            ship.restorePosition();
+                        if (ship.roundMoves[move].secondary !== undefined && ship.roundMoves[move].secondary.type === 'wind')
+                            ship.restorePosition();
+                        if (ship.roundMoves[move].secondary !== undefined && ship.roundMoves[move].secondary.type === 'whirlpool'){
+                            ship.restorePosition();
+                            ship.takeDamage(ship.bumpDamage);
+                            return 'whirlpool';
                         }
+                        ship.takeDamage(ship.bumpDamage);
                     }
                 }
             },
@@ -525,26 +555,30 @@ var gameInit = function () {
                             return;
                     }
                 });
-                game.winds.forEach(function (wind) {
-                    game.ships.forEach(function (ship) {
+                setTimeout(function () {
+                    game.runSecondaryMove(move);
+                }, 200);
+            },
+            runSecondaryMove: function (move) {
+                game.ships.forEach(function (ship) {
+                    game.winds.forEach(function (wind) {
                         if (ship.col === wind.col && ship.row === wind.row) {
-                            setTimeout(function () {
-                                ship.roundMoves[move].secondary = wind;
-                                ship.windMove(wind);
-                                game.resolveCollisions(move);
-                            }, 200);
+                            ship.roundMoves[move].secondary = wind;
+                            ship.windMove(wind);
+                            game.resolveCollisions(move);
                         }
                     });
-                });
-                game.whirlpools.forEach(function (whirlpool) {
-                    game.ships.forEach(function (ship) {
+                    game.whirlpools.forEach(function (whirlpool) {
                         for (var i = 0; i < 4; i++) {
                             if (ship.col === whirlpool.col[i] && ship.row === whirlpool.row[i]) {
-                                var j = i;
-                                setTimeout(function () {
-                                    ship.roundMoves[move].secondary = whirlpool;
-                                    ship.whirlpoolMove(whirlpool, j);
-                                }, 200);
+                                ship.roundMoves[move].secondary = whirlpool;
+                                ship.whirlpoolMove(whirlpool, i, 1);
+                                if (game.resolveCollisions(move) === 'whirlpool') {
+                                    break;
+                                }
+                                ship.whirlpoolMove(whirlpool, i, 2);
+                                game.resolveCollisions(move);
+                                break;
                             }
                         }
                     });
@@ -608,11 +642,48 @@ var gameInit = function () {
                                 break;
                         }
                     };
-                    ship.whirlpoolMove = function (whirlpool, i) {
-                        i = (i + 2) % 4;
-                        this.col = whirlpool.col[i];
-                        this.row = whirlpool.row[i];
-                        this.rotate('right');
+                    ship.whirlpoolMove = function (whirlpool, i, part) {
+                        switch (i) {
+                            case 0:
+                                if (part === 1) {
+                                    this.windMove({direction: 'right'});
+                                }
+                                if (part === 2) {
+                                    this.windMove({direction: 'down'});
+                                }
+                                break;
+                            case 1:
+                                if (part === 1) {
+                                    this.windMove({direction: 'down'});
+                                }
+                                if (part === 2) {
+                                    this.windMove({direction: 'left'});
+                                }
+                                break;
+                            case 2:
+                                if (part === 1) {
+                                    this.windMove({direction: 'left'});
+                                }
+                                if (part === 2) {
+                                    this.windMove({direction: 'up'});
+                                }
+                                break;
+                            case 3:
+                                if (part === 1) {
+                                    this.windMove({direction: 'up'});
+                                }
+                                if (part === 2) {
+                                    this.windMove({direction: 'right'});
+                                }
+                                break;
+                        }
+                        if (part === 1) {
+                            this.rotate('right');
+                        }
+                        //i = (i + 2) % 4;
+                        //this.col = whirlpool.col[i];
+                        //this.row = whirlpool.row[i];
+                        //this.rotate('right');
                     };
                     ship.forwardMove = function () {
                         this.savePosition();
