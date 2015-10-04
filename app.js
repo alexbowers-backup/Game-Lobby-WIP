@@ -22,6 +22,9 @@ app.use(express.static(__dirname + '/public'));
 io.rooms = {};
 io.sockets.on('connection', function (client) {
     var room;
+    var sendLog = function (message) {
+        io.sockets.emit('log', message);
+    };
     client.on('create', function (username) {
         var regexp = /^(?=.{4,12}$)[A-Za-z0-9]+(?:[_][A-Za-z0-9]+)*$/;
         if (!regexp.test(username) || username === null) {
@@ -78,11 +81,12 @@ io.sockets.on('connection', function (client) {
             gameID: client.gameID
         });
         client.broadcast.to(client.gameID).emit('connected user', client.username);
-        logUserActions(client.username, 'connected to (' + client.gameID + ')');
+        logUserActions(client.username, 'connected (' + client.gameID + ')');
     });
     client.on('start', function () {
-        console.log('start');
         if (client.username !== room.users[0]) return;
+        logUserActions(client.username, 'started game (' + client.gameID + ')');
+        sendLog('Game started');
         room.isStarted = true;
         room.ships = [];
         room.users.forEach(function (user, i) {
@@ -177,14 +181,14 @@ io.sockets.on('connection', function (client) {
         }
 
         ////////////////////////// DEVELOPMENT /////////////////////////////////
-        //room.ships[0].col = 3;
-        //room.ships[0].row = 3;
+        //room.ships[0].col = 4;
+        //room.ships[0].row = 2;
         //room.ships[0].direction = 'up';
         //room.winds[0].col = 3;
         //room.winds[0].row = 1;
         //room.winds[0].direction = 'down';
-        //room.ships[1].col = 3;
-        //room.ships[1].row = 0;
+        //room.ships[1].col = 4;
+        //room.ships[1].row = 5;
         //room.rocks[0].col = 4;
         //room.rocks[0].row = 2;
         //room.whirlpools[0].col = [3, 4, 4, 3];
@@ -242,6 +246,7 @@ io.sockets.on('connection', function (client) {
             user: client.username,
             users: room.users
         });
+        sendLog('<b>' + client.username + '</b> has left the game');
         logUserActions(client.username, 'disconnected from (' + client.gameID + ')');
     });
 });
@@ -249,13 +254,18 @@ io.sockets.on('connection', function (client) {
 app.get('/', function(req, res){
     res.sendFile(path.join(__dirname + '/public/lobby.html'));
 });
-
-function logUserActions (name, action) {
+function getTime() {
     var date = new Date();
+    var time = [
+        date.getHours() < 10 ? '0' + date.getHours() : date.getHours(),
+        date.getMinutes() < 10 ? '0' + date.getMinutes() : date.getMinutes(),
+        date.getSeconds() < 10 ? '0' + date.getSeconds() : date.getSeconds()
+    ];
+    return time.join(':');
+}
+function logUserActions (name, action) {
     console.log(
-        date.getHours() + ':' +
-        date.getMinutes() + ':' +
-        date.getSeconds() +
+        getTime() +
         ' [' + name + '] ' +
         action
     );

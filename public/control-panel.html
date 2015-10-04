@@ -1,0 +1,90 @@
+<div id="control-panel" class="col-md-12" ng-class="{hideControl: !lobby.game.isStarted}">
+	<div class="col-md-6">
+		<div class="inline-block container-fluid">
+			<label>Moves:</label> <br>
+
+			<div class="margin-bottom-20" ng-repeat="(i, move) in lobby.game.round.moves">
+				<div class="form-control-static">
+						<span class="glyphicon glyphicon-ban-circle"
+						      data-toggle="tooltip" data-placement="top" title="" aria-hidden="true"
+						      data-original-title="Don't move"
+						      ng-click="lobby.game.round.moves[i].move = 'stay'"
+						      ng-class="{'glyphicon-success':  move.move === 'stay'}"></span>
+						<span style="-webkit-transform: scaleX(-1);-moz-transform: scaleX(-1);-ms-transform: scaleX(-1);-o-transform: scaleX(-1);transform: scaleX(-1);"
+						      class="glyphicon glyphicon-share-alt"
+						      data-toggle="tooltip" data-placement="top" title="" aria-hidden="true"
+						      data-original-title="Turn left"
+						      ng-click="lobby.game.round.moves[i].move = 'turn-left'"
+						      ng-class="{'glyphicon-success':  move.move === 'turn-left'}"></span>
+						<span class="glyphicon glyphicon-arrow-up"
+						      data-toggle="tooltip" data-placement="top" title="" aria-hidden="true"
+						      data-original-title="Move forward"
+						      ng-click="lobby.game.round.moves[i].move = 'forward'"
+						      ng-class="{'glyphicon-success':  move.move === 'forward'}"></span>
+						<span class="glyphicon glyphicon-share-alt"
+						      data-toggle="tooltip" data-placement="top" title="" aria-hidden="true"
+						      data-original-title="Turn right"
+						      ng-click="lobby.game.round.moves[i].move = 'turn-right'"
+						      ng-class="{'glyphicon-success':  move.move === 'turn-right'}"></span>
+				</div>
+				<script>$('[data-toggle="tooltip"]').tooltip();</script>
+			</div>
+		</div>
+		<div class="inline-block container-fluid">
+			<label>Cannons:</label> <br>
+
+			<div class="margin-bottom-20" ng-repeat="(i, move) in lobby.game.round.moves">
+				<div class="form-control-static">
+						<span class="glyphicon glyphicon-arrow-left"
+						      data-toggle="tooltip" data-placement="top" title="" aria-hidden="true"
+						      data-original-title="Two shots left"
+						      ng-click="move.fire['left'] = 2"
+						      ng-class="{'glyphicon-success':  move.fire['left'] === 2}"></span>
+						<span class="glyphicon glyphicon-arrow-left"
+						      data-toggle="tooltip" data-placement="top" title="" aria-hidden="true"
+						      data-original-title="One shot left"
+						      ng-click="move.fire['left'] = 1"
+						      ng-class="{'glyphicon-success':  move.fire['left'] > 0}"></span>
+						<span class="glyphicon glyphicon-ban-circle"
+						      data-toggle="tooltip" data-placement="top" title="" aria-hidden="true"
+						      data-original-title="Don't shoot"
+						      ng-click="move.fire['left'] = 0; move.fire['right'] = 0"
+						      ng-class="{'glyphicon-success': move.fire['left'] === 0 && move.fire['right'] === 0}"></span>
+						<span class="glyphicon glyphicon-arrow-right"
+						      data-toggle="tooltip" data-placement="top" title="" aria-hidden="true"
+						      data-original-title="One shot right"
+						      ng-click="move.fire['right'] = 1"
+						      ng-class="{'glyphicon-success':  move.fire['right'] > 0}"></span>
+						<span class="glyphicon glyphicon-arrow-right"
+						      data-toggle="tooltip" data-placement="top" title="" aria-hidden="true"
+						      data-original-title="Two shots right"
+						      ng-click="move.fire['right'] = 2"
+						      ng-class="{'glyphicon-success':  move.fire['right'] === 2}"></span>
+				</div>
+				<script>$('[data-toggle="tooltip"]').tooltip();</script>
+			</div>
+		</div>
+		<div class="inline-block container-fluid">
+			<div id="round-stats" class="container-fluid">
+				<div ng-show="lobby.game.isStarted">
+					Round: {{lobby.game.round.i}}/{{lobby.game.round.number}}
+				</div>
+				<div id="timer"></div>
+			</div>
+			<h4 class="text-center"><b>Score:</b></h4>
+
+			<div class="col-md-6 text-center" style="padding: 0 10px">
+				<span ng-class="{'text-bold':lobby.game.userTeam === 'left'}">Team 1</span> <br>
+				{{lobby.game.score.left}}
+			</div>
+			<div class="col-md-6 text-center" style="padding: 0 10px">
+				<span ng-class="{'text-bold':lobby.game.userTeam === 'right'}">Team 2</span> <br>
+				{{lobby.game.score.right}}
+			</div>
+		</div>
+	</div>
+	<div id="fps" class="col-md-1"></div>
+	<div class="col-md-5">
+		<div id="logs" class="grey-border"></div>
+	</div>
+</div>

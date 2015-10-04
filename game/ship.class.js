@@ -21,22 +21,35 @@ var Ship = function (props) {
     this.showCircle = false;
     this.prevPosition = {};
     this.movesOrder = [];
+    this.cannonballs = [];
     this.roundMoves = [
         {
             move: 'stay',
-            fire: 'no'
+            fire: {
+                left: 0,
+                right: 0
+            }
         },
         {
             move: 'stay',
-            fire: 'no'
+            fire: {
+                left: 0,
+                right: 0
+            }
         },
         {
             move: 'stay',
-            fire: 'no'
+            fire: {
+                left: 0,
+                right: 0
+            }
         },
         {
             move: 'stay',
-            fire: 'no'
+            fire: {
+                left: 0,
+                right: 0
+            }
         }
     ];
 };

@@ -1,13 +1,12 @@
-//collision
 var game;
 var username;
 var config;
 var tooltip;
 var safeZoneImage = new Image();
-var openSeaImage = new Image();
-var whirlpoolImage = new Image();
 safeZoneImage.src = 'images/safe-zone.png';
+var openSeaImage = new Image();
 openSeaImage.src = 'images/open-sea.png';
+var whirlpoolImage = new Image();
 whirlpoolImage.src = 'images/whirlpool.png';
 var gameInit = function () {
     var canvasWrap = document.getElementById('game-wrap');
@@ -63,6 +62,7 @@ var gameInit = function () {
     if (canvas.getContext) {
         game = {
             ctx: canvas.getContext("2d"),
+            lastFrameTime: {},
             ships: [],
             flags: [],
             winds: [],
@@ -83,6 +83,15 @@ var gameInit = function () {
                 cellHeight: function () {
                     return this.width / this.columns
                 }
+            },
+            runFrame: function (now, fps, i) {
+                this.lastFrameTime[i] = this.lastFrameTime[i] ? this.lastFrameTime[i] : now;
+                var timePassed = now - this.lastFrameTime[i];
+                if (timePassed >= 999 / fps) {
+                    this.lastFrameTime[i] = now;
+                    return true;
+                }
+                return false;
             },
             drawGrid: function () {
                 //width
@@ -228,8 +237,6 @@ var gameInit = function () {
                     (flag.row * this.field.cellHeight() + this.field.cellHeight() * 0.5) + (this.field.cellWidth() * 0.375) * 0.33
                 );
 
-                //flag.col * this.field.cellWidth() + this.field.cellHeight() / 4 + shift;
-                //flag.row * this.field.cellHeight() + this.field.cellHeight() / 4;
             },
             drawRock: function (rock) {
                 this.ctx.beginPath();
@@ -387,24 +394,37 @@ var gameInit = function () {
                 //this.ctx.strokeStyle = 'black';
                 this.ctx.stroke();
             },
-            update: function () {
-                var game = this;
-                //game.resolveCollisions();
-                game.drawZones();
-                game.drawGrid();
-                game.flags.forEach(function (flag) {
+            drawCannonball: function (cannonball) {
+                this.ctx.beginPath();
+                this.ctx.lineWidth = 4;
+                this.ctx.arc(
+                    cannonball.x,
+                    cannonball.y,
+                    this.field.cellWidth() * 0.125,
+                    0,
+                    2 * Math.PI,
+                    false
+                );
+                this.ctx.fillStyle = 'yellow';
+                this.ctx.fill();
+                this.ctx.lineWidth = 1;
+            },
+            update: function (now) {
+                this.drawZones();
+                this.drawGrid();
+                this.flags.forEach(function (flag) {
                     game.drawFlag(flag);
                 });
-                game.winds.forEach(function (wind) {
+                this.winds.forEach(function (wind) {
                     game.drawWind(wind);
                 });
-                game.whirlpools.forEach(function (whirlpool) {
+                this.whirlpools.forEach(function (whirlpool) {
                     game.drawWhirlpool(whirlpool);
                 });
-                game.rocks.forEach(function (rock) {
+                this.rocks.forEach(function (rock) {
                     game.drawRock(rock);
                 });
-                game.ships.forEach(function (ship, i) {
+                this.ships.forEach(function (ship, i) {
                     if (ship.isDamaged === true) {
                         game.ships[i].isDamaged = 1;
                     }
@@ -418,7 +438,56 @@ var gameInit = function () {
                     if (ship.isDamaged > 10) {
                         game.ships[i].isDamaged = false;
                     }
+                    if (ship.cannonballs.length) {
+                        ship.cannonballs.forEach(function (cannonball, i) {
+                            game.drawCannonball(cannonball);
+                            var modifier = cannonball.direction === 'left' ? -config.ship.cannonballSpeed : config.ship.cannonballSpeed;
+                            cannonball.distance = cannonball.distance
+                                ? cannonball.distance + config.ship.cannonballSpeed
+                                : config.ship.cannonballSpeed;
+                            switch (cannonball.shipDirection) {
+                                case 'right':
+                                    cannonball.y += modifier;
+                                    break;
+                                case 'left':
+                                    cannonball.y -= modifier;
+                                    break;
+                                case 'up':
+                                    cannonball.x += modifier;
+                                    break;
+                                case 'down':
+                                    cannonball.x -= modifier;
+                                    break;
+                            }
+                            if (cannonball.distance >= game.field.cellHeight() * 3) {
+                                delete ship.cannonballs[i];
+                                return;
+                            }
+
+                            for (var s in game.ships) {
+                                var ship2 = game.ships[s];
+                                if (Math.abs(ship2.getX() - cannonball.x) < game.field.cellHeight() * 0.25
+                                    && Math.abs(ship2.getY() - cannonball.y) < game.field.cellHeight() * 0.25) {
+                                    if (!ship2.isDead) {
+                                        ship2.takeDamage(ship2.cannonDamage);
+                                        delete ship.cannonballs[i];
+                                        return;
+                                    }
+                                }
+                            }
+                            for (var r in game.rocks) {
+                                var rock = game.rocks[r];
+                                if (Math.abs((rock.col + 0.5) * game.field.cellWidth() - cannonball.x) < (game.field.cellHeight() * 0.25 + 12)
+                                    && Math.abs((rock.row + 0.5) * game.field.cellHeight() - cannonball.y) < (game.field.cellHeight() * 0.25 + 12)) {
+                                    delete ship.cannonballs[i];
+                                    return;
+                                }
+                            }
+                        });
+                    }
                 });
+
+                this.frame = this.frame ? this.frame + 1 : 1;
             },
             getShip: function (col, row) {
                 for (var i in this.ships) {
@@ -433,12 +502,10 @@ var gameInit = function () {
                 var ships = [];
                 var game = this;
                 game.ships.forEach(function (ship) {
-                    var shipX = (ship.col + 0.5) * game.field.cellWidth();
-                    var shipY = (ship.row + 0.5) * game.field.cellHeight();
                     var flagX = (flag.col + 0.5) * game.field.cellWidth();
                     var flagY = (flag.row + 0.5) * game.field.cellHeight();
                     var flagR = game.field.cellWidth() * 3.5;
-                    if (Math.pow(shipX - flagX, 2) + Math.pow(shipY - flagY, 2) < Math.pow(flagR, 2)) {
+                    if (Math.pow(ship.getX() - flagX, 2) + Math.pow(ship.getY() - flagY, 2) < Math.pow(flagR, 2)) {
                         ships.push(ship);
                     }
                 });
@@ -468,6 +535,29 @@ var gameInit = function () {
                 game.score.left += points.left;
                 game.score.right += points.right;
             },
+            //findCannonballCollision: function (cannonball) {
+            //    var collidedShips = [];
+            //    for (var i in this.ships) {
+            //        var ship1 = this.ships[i];
+            //        for (var j = Number(i) + 1; j < this.ships.length; j++) {
+            //            var ship2 = this.ships[j];
+            //            var shipX = (ship.col + 0.5) * game.field.cellWidth();
+            //            var shipY = (ship.row + 0.5) * game.field.cellHeight();
+            //            var flagX = (flag.col + 0.5) * game.field.cellWidth();
+            //            var flagY = (flag.row + 0.5) * game.field.cellHeight();
+            //            var flagR = game.field.cellWidth() * 3.5;
+            //            if (Math.pow(shipX - flagX, 2) + Math.pow(shipY - flagY, 2) < Math.pow(flagR, 2)) {
+            //                ships.push(ship);
+            //            }
+            //        }
+            //        this.rocks.forEach(function (rock) {
+            //            if (ship1.col === rock.col && ship1.row === rock.row) {
+            //                collidedShips.push(ship1);
+            //            }
+            //        });
+            //    }
+            //    return collidedShips;
+            //},
             findCollisions: function () {
                 var collidedShips = [];
                 for (var i in this.ships) {
@@ -543,21 +633,27 @@ var gameInit = function () {
                 this.ships.forEach(function (ship) {
                     if (ship.isDead) return;
                     if (!ship.roundMoves.length) return;
-                    switch (ship.roundMoves[move].fire) {
-                        case 'left':
-                            ship.cannonFire('left');
-                            break;
-                        case 'right':
-                            ship.cannonFire('right');
-                            break;
-                        case 'no':
-                        default:
-                            return;
+                    for (var side in ship.roundMoves[move].fire) {
+                        if (ship.roundMoves[move].fire[side] > 0) {
+                            ship.cannonFire(side);
+                        }
                     }
                 });
                 setTimeout(function () {
+                    game.ships.forEach(function (ship) {
+                        if (ship.isDead) return;
+                        if (!ship.roundMoves.length) return;
+                        for (var side in ship.roundMoves[move].fire) {
+                            if (ship.roundMoves[move].fire[side] === 2) {
+                                console.log(ship.roundMoves[move].fire[side]);
+                                ship.cannonFire(side);
+                            }
+                        }
+                    });
+                }, 250);
+                setTimeout(function () {
                     game.runSecondaryMove(move);
-                }, 200);
+                }, 500);
             },
             runSecondaryMove: function (move) {
                 game.ships.forEach(function (ship) {
@@ -600,6 +696,12 @@ var gameInit = function () {
                 this.ships = ships;
                 this.setUserShip(username);
                 ships.forEach(function (ship) {
+                    ship.getX = function () {
+                        return (this.col + 0.5) * game.field.cellWidth();
+                    };
+                    ship.getY = function () {
+                        return (this.row + 0.5) * game.field.cellHeight();
+                    };
                     ship.rotate = function (side) {
                         var directions = ['up', 'right', 'down', 'left'];
                         var dirIndex = directions.indexOf(this.direction);
@@ -680,10 +782,6 @@ var gameInit = function () {
                         if (part === 1) {
                             this.rotate('right');
                         }
-                        //i = (i + 2) % 4;
-                        //this.col = whirlpool.col[i];
-                        //this.row = whirlpool.row[i];
-                        //this.rotate('right');
                     };
                     ship.forwardMove = function () {
                         this.savePosition();
@@ -772,27 +870,40 @@ var gameInit = function () {
                         }
                     };
                     ship.cannonFire = function (side) {
-                        var modifier, ship;
-                        if (side === 'left')
-                            modifier = -1;
-                        else if (side === 'right')
-                            modifier = 1;
-                        for (var i = 1; i <= config.ship.cannonRange; i++) {
-                            switch (this.direction) {
-                                case 'right':
-                                    ship = game.getShip(this.col, this.row + i * modifier);
-                                    break;
-                                case 'left':
-                                    ship = game.getShip(this.col, this.row - i * modifier);
-                                    break;
-                                case 'up':
-                                    ship = game.getShip(this.col + i * modifier, this.row);
-                                    break;
-                                case 'down':
-                                    ship = game.getShip(this.col - i * modifier, this.row);
-                                    break;
-                            }
-                            if (ship) ship.takeDamage(this.cannonDamage);
+                        var modifier = side === 'left' ? -0.5 : 0.5;
+                        switch (this.direction) {
+                            case 'right':
+                                this.cannonballs.push({
+                                    x: (this.col + 0.5) * game.field.cellWidth(),
+                                    y: (this.row + 0.5 + modifier) * game.field.cellHeight(),
+                                    direction: side,
+                                    shipDirection: this.direction
+                                });
+                                break;
+                            case 'left':
+                                this.cannonballs.push({
+                                    x: (this.col + 0.5) * game.field.cellWidth(),
+                                    y: (this.row + 0.5 - modifier) * game.field.cellHeight(),
+                                    direction: side,
+                                    shipDirection: this.direction
+                                });
+                                break;
+                            case 'up':
+                                this.cannonballs.push({
+                                    x: (this.col + 0.5 + modifier) * game.field.cellWidth(),
+                                    y: (this.row + 0.5) * game.field.cellHeight(),
+                                    direction: side,
+                                    shipDirection: this.direction
+                                });
+                                break;
+                            case 'down':
+                                this.cannonballs.push({
+                                    x: (this.col + 0.5 - modifier) * game.field.cellWidth(),
+                                    y: (this.row + 0.5) * game.field.cellHeight(),
+                                    direction: side,
+                                    shipDirection: this.direction
+                                });
+                                break;
                         }
                     };
                     ship.savePosition = function () {
@@ -843,9 +954,6 @@ var gameInit = function () {
         };
     }
 
-    var lastTime;
-    var requiredElapsed = 40;
-
     window.canvasAnimation = true;
     requestAnimationFrame(loop);
 
@@ -853,16 +961,43 @@ var gameInit = function () {
         if (window.canvasAnimation) {
             requestAnimationFrame(loop);
         }
-
-        if(!lastTime){
-            lastTime = now;
-        }
-        var elapsed = now - lastTime;
-
-        if(elapsed > requiredElapsed){
-            game.update();
-            lastTime = now;
-        }
+        game.update(now);
     }
 
+    //$(document).keydown(function(e) {
+    //    var testShip = game.ships[0];
+    //    switch(e.which) {
+    //        case 37: // left
+    //            testShip.turnMove('left');
+    //            break;
+    //
+    //        case 38: // up
+    //            testShip.forwardMove();
+    //            break;
+    //
+    //        case 39: // right
+    //            testShip.turnMove('right');
+    //            break;
+    //
+    //        case 40: // down
+    //            console.log(testShip.getSideCells());
+    //            break;
+    //        case 65: // leftFire
+    //            testShip.cannonFire('left');
+    //            break;
+    //        case 68: // rightFire
+    //            testShip.cannonFire('right');
+    //            break;
+    //
+    //        default: return; // exit this handler for other keys
+    //    }
+    //    game.update();
+    //    e.preventDefault(); // prevent the default action (scroll / move caret)
+    //});
+
+    $('#fps').html('<b>FPS: 0</b>');
+    setInterval(function () {
+        $('#fps').html('<b>FPS: ' + game.frame + '</b>');
+        game.frame = 0;
+    }, 1000);
 };

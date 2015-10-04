@@ -8,11 +8,12 @@
 	<script type="text/javascript" src="js/jquery.min.js"></script>
 	<script type="text/javascript" src="js/bootstrap.min.js"></script>
 	<script type="text/javascript" src="js/angular.min.js"></script>
+	<script type="text/javascript" src="js/progressbar.min.js"></script>
 	<script type="text/javascript" src="js/lobby.js"></script>
 	<script type="text/javascript" src="js/dragscrollable.js"></script>
 	<script type="text/javascript" src="js/game.js"></script>
 	<script>
-		$(document).ready(function () {
+		window.onload = function () {
 			$(function() {
 				$('#game-wrap').
 						dragscrollable({dragSelector: '#game', acceptPropagatedEvent: false});
@@ -21,24 +22,17 @@
 			$('#invite').change(function () {
 				$(this).attr('size', $(this).val().length);
 			});
-			var i = 0;
 			window.onresize = function () {
-				$('#game-wrap').height($(window).height() - $('#header').height());
+				$('#game-wrap').height($(window).height() - $('#control-panel').outerHeight());
 			};
 			window.onresize();
-		});
+		}
 	</script>
 </head>
 <body ng-controller="LobbyController as lobby">
 	<div class="main-container">
-		<div id="header">
-			<div id="counter" class="col-md-offset-1 col-md-2">
-				<div ng-show="lobby.game.isStarted">
-					<h3>Round: {{lobby.game.round.i}}</h3>
-					<h3>Time left: {{lobby.game.round.timer}}</h3>
-				</div>
-			</div>
-			<div id="message-wrap" class="col-md-offset-1 col-md-4">
+		<div id="header" ng-hide="lobby.game.isStarted">
+			<div id="message-wrap" class="col-md-offset-4 col-md-4">
 				<div id="message" ng-class="{alert: lobby.messageType === 'alert', message: lobby.messageType === 'message'}" ng-show="lobby.message">
 					<p>{{lobby.message}}</p>
 				</div>
@@ -89,61 +83,20 @@
 			</div>
 		</div>
 	</div>
-	<div id="room-wrap" ng-show="lobby.room.id">
-		<div class="container-fluid col-md-9">
-			<div id="game-wrap" class="shadow col-md-12">
-				<div id="tooltip"></div>
-				<canvas id="game" ng-show="lobby.game.isStarted"></canvas>
-			</div>
-		</div>
-		<div class="container-fluid col-md-3">
-			<div id="control-panel" class="block shadow col-md-12 margin-bottom-20">
-				<div class="form-group col-md-7">
-					<label>Moves:</label> <br>
-
-					<div ng-repeat="(i, move) in lobby.game.round.moves">
-						<select id="{{'move' + (i + 1)}}" class="form-control" ng-class="{'margin-bottom-20':i < lobby.game.round.moves.length - 1}" ng-model="lobby.game.round.moves[i].move">
-							<option value="stay">Stay</option>
-							<option value="forward">Forward</option>
-							<option value="turn-left">Turn left</option>
-							<option value="turn-right">Turn right</option>
-						</select>
-					</div>
-				</div>
-				<div class="col-md-5">
-					<label>Cannons:</label> <br>
-					<div class="margin-bottom-20" ng-repeat="(i, move) in lobby.game.round.moves">
-						<div class="form-control-static">
-							<span class="glyphicon glyphicon-ban-circle" ng-click="lobby.game.setFire(i, 'no')" ng-class="{'glyphicon-success':  move.fire === 'no'}"></span>
-							<span class="glyphicon glyphicon-arrow-left" ng-click="lobby.game.setFire(i, 'left')" ng-class="{'glyphicon-success':  move.fire === 'left'}"></span>
-							<span class="glyphicon glyphicon-arrow-right" ng-click="lobby.game.setFire(i, 'right')" ng-class="{'glyphicon-success':  move.fire === 'right'}"></span>
-						</div>
-					</div>
-				</div>
-				<div>
-					<h4 class="text-center"><b>Score:</b></h4>
-					<div class="col-md-6 text-center">
-						<span ng-class="{'text-bold':lobby.game.userTeam === 'left'}">Team 1</span> <br>
-						{{lobby.game.score.left}}
-					</div>
-					<div class="col-md-6 text-center">
-						<span ng-class="{'text-bold':lobby.game.userTeam === 'right'}">Team 2</span> <br>
-						{{lobby.game.score.right}}
-					</div>
-				</div>
-			</div>
+	<div id="room-wrap"  ng-show="lobby.room.id && !lobby.game.isStarted" >
+		<div class=" col-md-offset-4 col-md-4">
 			<div id="room" class="block shadow col-md-12">
 				<div id="users-list" class="col-md-7">
 					<div>
-									<span class="users master">
-										{{lobby.room.master}}
-									</span>
+						<span class="users master">
+							{{lobby.room.master}}
+						</span>
 						<br/>
 					</div>
 					<div ng-repeat="user in lobby.room.users | orderBy">
-									<span class="users" ng-class="{user: user === lobby.room.user}">
-										{{user}}
-									</span>
+						<span class="users" ng-class="{user: user === lobby.room.user}">
+							{{user}}
+						</span>
 						<br/>
 					</div>
 				</div>
@@ -169,6 +122,8 @@
 			</div>
 		</div>
 	</div>
+	<div ng-include="'canvas.html'"></div>
+	<div ng-include="'control-panel.html'"></div>
 	<div id="game-over" class="shadow block" ng-show="lobby.game.over">
 		<div class="text-center">
 			<h3>{{lobby.game.overMessage}}</h3>

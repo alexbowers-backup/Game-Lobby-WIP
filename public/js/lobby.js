@@ -20,6 +20,22 @@
 
             },
             over: false,
+            createTimer: function () {
+                this.timer = this.timer || new ProgressBar.Circle(document.getElementById('timer'), {
+                    duration: 1000,
+                    color: 'black',
+                    trailColor: "#ddd",
+                    strokeWidth: 4,
+                    trailWidth: 2,
+                    //text: {
+                    //    style: {
+                            //margin: '10px 0 0 0',
+                            //'font-size': '24px'
+                        //}
+                        //alignToBottom: false
+                    //}
+                });
+            },
             scrollToShip: function (ship) {
                 var gameWrap = $('#game-wrap');
                 var center = gameWrap.height() / 2;
@@ -65,58 +81,57 @@
                 this.round.moves = [
                     {
                         move: 'stay',
-                        fire: 'no'
+                        fire: {
+                            left: 0,
+                            right: 0
+                        }
                     },
                     {
                         move: 'stay',
-                        fire: 'no'
+                        fire: {
+                            left: 0,
+                            right: 0
+                        }
                     },
                     {
                         move: 'stay',
-                        fire: 'no'
+                        fire: {
+                            left: 0,
+                            right: 0
+                        }
                     },
                     {
                         move: 'stay',
-                        fire: 'no'
+                        fire: {
+                            left: 0,
+                            right: 0
+                        }
                     }
                 ];
             },
             startRound: function () {
+                lobby.game.timer.set(1);
                 lobby.game.round.i++;
+                lobby.game.timer.setText(config.round.timer);
                 lobby.game.round.timer = config.round.timer;
                 this.resetMoves();
                 lobby.game.round.interval = $interval(function () {
-                    lobby.game.round.timer--;
+                    lobby.game.timer.setText(lobby.game.round.timer);
+                    var animateTimer = (lobby.game.round.timer - 1) > 0 ? (lobby.game.round.timer - 1) : 0;
+                    lobby.game.timer.animate(animateTimer / config.round.timer);
                     if (lobby.game.round.timer < 1) {
                         $interval.cancel(lobby.game.round.interval);
-                        if (lobby.room.isMaster)
+                        if (lobby.room.isMaster) {
                             socket.emit('round ended');
+                            lobby.game.timer.setText('loading');
+                        }
                         socket.emit('round data', {
                             ship: game.userShip,
                             moves: lobby.game.round.moves
                         });
                     }
+                    lobby.game.round.timer--;
                 }, 1000);
-            },
-            //startTimer: function (round) {
-            //    console.log(round.i, round.seconds);
-            //},
-            setFire: function (move, fire) {
-                var sideFires = {
-                    left: [],
-                    right: []
-                };
-                lobby.game.round.moves.forEach(function (move, i) {
-                    if (move.fire === 'left')
-                        sideFires.left.push(i);
-                    else if (move.fire === 'right')
-                        sideFires.right.push(i);
-                });
-                if (fire === 'left' && sideFires.left.length > 1)
-                    lobby.game.round.moves[sideFires.left[0]].fire = 'no';
-                else if (fire === 'right' && sideFires.right.length > 1)
-                    lobby.game.round.moves[sideFires.right[0]].fire = 'no';
-                lobby.game.round.moves[move].fire = fire;
             }
         };
         lobby.game.resetMoves();
@@ -175,23 +190,16 @@
                 game.rocks = data.rocks;
                 game.whirlpools = data.whirlpools;
                 lobby.game.userTeam = game.userShip.team;
+                lobby.game.createTimer();
                 lobby.game.startRound();
                 lobby.game.scrollToShip(game.userShip);
-
+                lobby.game.round.number = config.round.number;
             });
             socket.on('next round', function (data) {
                 game.updateShips(data.ships);
                 var i = 0;
                 var interval = $interval(function () {
                     game.runMove(i);
-                    //var j = i;
-                    //$interval(function () {
-                    //    game.runSecondaryMove(j);
-                    //}, 200, 1);
-                    //game.winds.forEach(function (wind) {
-                    //    console.log(2);
-                    //    game.checkWind(wind);
-                    //});
                     game.flags.forEach(function (flag) {
                         if (i === 3){
                             game.checkFlag(flag, true);
@@ -209,7 +217,7 @@
                         }
                         lobby.game.startRound();
                     }
-                }, 500, 4);
+                }, 1000, 4);
             });
             socket.on('connected user', function (username) {
                 lobby.room.users.push(username);
@@ -220,6 +228,10 @@
                 lobby.room.users = data.users;
                 if (lobby.game.isStarted)
                     game.getShipByName(data.user).isDead = true;
+            });
+            socket.on('log', function (log) {
+                var logs = document.getElementById('logs');
+                logs.innerHTML += log + '<br>';
             });
 
             return false;
