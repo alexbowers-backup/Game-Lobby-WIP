@@ -22,6 +22,12 @@ var Ship = function (props) {
     this.prevPosition = {};
     this.movesOrder = [];
     this.cannonballs = [];
+    this.animation = {
+        moves: [],
+        frame: 0,
+        frameR: 0,
+        angle: props.team == 'left' ? 90 : 270
+    };
     this.roundMoves = [
         {
             move: 'stay',

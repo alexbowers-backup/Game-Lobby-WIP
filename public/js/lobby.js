@@ -26,7 +26,7 @@
                     color: 'black',
                     trailColor: "#ddd",
                     strokeWidth: 4,
-                    trailWidth: 2,
+                    trailWidth: 2
                     //text: {
                     //    style: {
                             //margin: '10px 0 0 0',
@@ -56,6 +56,9 @@
                 };
                 $interval.cancel(this.round.interval);
                 window.canvasAnimation = false;
+                if (game) {
+                    clearInterval(game.fpsInterval);
+                }
             },
             finish: function () {
                 if (this.score.left > this.score.right) {
@@ -71,6 +74,7 @@
                 else {
                     this.overMessage = 'Draw';
                 }
+                window.canvasAnimation = false;
                 $interval(function () {
                     lobby.game.isStarted = false;
                     lobby.game.over = true;
@@ -199,25 +203,27 @@
                 game.updateShips(data.ships);
                 var i = 0;
                 var interval = $interval(function () {
-                    game.runMove(i);
-                    game.flags.forEach(function (flag) {
-                        if (i === 3){
-                            game.checkFlag(flag, true);
-                            lobby.game.score = game.score;
-                        }
-                        else {
-                            game.checkFlag(flag);
-                        }
-                    });
+                    if (i < 4) {
+                        game.runMove(i);
+                        game.flags.forEach(function (flag) {
+                            if (i === 3) {
+                                game.checkFlag(flag, true);
+                                lobby.game.score = game.score;
+                            }
+                            else {
+                                game.checkFlag(flag);
+                            }
+                        });
+                    }
                     i++;
-                    if (i === 4) {
+                    if (i === 5) {
                         if (lobby.game.round.i === config.round.number) {
                             lobby.game.finish();
                             return;
                         }
                         lobby.game.startRound();
                     }
-                }, 1000, 4);
+                }, 4000, 5);
             });
             socket.on('connected user', function (username) {
                 lobby.room.users.push(username);

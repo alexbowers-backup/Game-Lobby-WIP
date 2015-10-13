@@ -181,17 +181,22 @@ io.sockets.on('connection', function (client) {
         }
 
         ////////////////////////// DEVELOPMENT /////////////////////////////////
-        //room.ships[0].col = 4;
-        //room.ships[0].row = 2;
-        //room.ships[0].direction = 'up';
-        //room.winds[0].col = 3;
+        //room.ships[0].col = 3;
+        //room.ships[0].row = 1;
+        //room.ships[0].direction = 'right';
+        //room.ships[0].animation.angle = 90;
+        //room.ships[1].col = 4;
+        //room.ships[1].row = 6;
+        //room.ships[1].direction = 'left';
+        //room.ships[1].animation.angle = 270;
+        //room.winds[0].col = 4;
         //room.winds[0].row = 1;
         //room.winds[0].direction = 'down';
         //room.ships[1].col = 4;
         //room.ships[1].row = 5;
         //room.rocks[0].col = 4;
         //room.rocks[0].row = 2;
-        //room.whirlpools[0].col = [3, 4, 4, 3];
+        //room.whirlpools[0].col = [4, 5, 5, 4];
         //room.whirlpools[0].row = [1, 1, 2, 2];
         ////////////////////////// DEVELOPMENT /////////////////////////////////
 
@@ -221,7 +226,8 @@ io.sockets.on('connection', function (client) {
             'hp',
             'isDamaged',
             'isDead',
-            'prevPosition'
+            'prevPosition',
+            'animation'
         ];
         updatingProps.forEach(function (prop) {
             ship[prop] = data.ship[prop];

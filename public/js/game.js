@@ -137,8 +137,29 @@ var gameInit = function () {
 
                 }
             },
+            drawTriangle: function (x, y, angle) {
+                this.ctx.save();
+                this.ctx.translate(x, y);
+                this.ctx.rotate(angle * Math.PI / 180);
+                this.ctx.translate(-x, -y);
+                var triangle = new Path2D();
+                triangle.moveTo(
+                    x,
+                    y - this.field.cellHeight() * 0.25
+                );
+                triangle.lineTo(
+                    x + this.field.cellWidth() * 0.25,
+                    y + this.field.cellHeight() * 0.25
+                );
+                triangle.lineTo(
+                    x - this.field.cellWidth() * 0.25,
+                    y + this.field.cellHeight() * 0.25
+                );
+                this.ctx.fill(triangle);
+                this.ctx.restore();
+            },
             drawShip: function (ship) {
-                var shift = 0;
+                //var shift = 0;
                 if (ship.isDead) {
                     this.ctx.fillStyle = 'black';
                 }
@@ -156,70 +177,11 @@ var gameInit = function () {
                         ship.teamColor = config.colors.enemyColor;
                     }
                 }
-                var triangle = new Path2D();
-                if (ship.isDamaged) {
-                    shift = ship.isDamaged % 2 ? 5 : -5;
-                }
-                switch (ship.direction) {
-                    case 'right':
-                        triangle.moveTo(
-                            ship.col * this.field.cellWidth() + this.field.cellHeight() / 4,
-                            ship.row * this.field.cellHeight() + this.field.cellHeight() / 4 + shift
-                        );
-                        triangle.lineTo(
-                            ship.col * this.field.cellWidth() + this.field.cellHeight() / 4,
-                            ship.row * this.field.cellHeight() + this.field.cellHeight() * 0.75 + shift
-                        );
-                        triangle.lineTo(
-                            ship.col * this.field.cellWidth() + this.field.cellWidth() * 0.75,
-                            ship.row * this.field.cellHeight() + this.field.cellHeight() / 2 + shift
-                        );
-                        break;
-                    case 'left':
-                        triangle.moveTo(
-                            ship.col * this.field.cellWidth() + this.field.cellWidth() * 0.75,
-                            ship.row * this.field.cellHeight() + this.field.cellHeight() / 4 + shift
-                        );
-                        triangle.lineTo(
-                            ship.col * this.field.cellWidth() + this.field.cellWidth() * 0.75,
-                            ship.row * this.field.cellHeight() + this.field.cellHeight() * 0.75 + shift
-                        );
-                        triangle.lineTo(
-                            ship.col * this.field.cellWidth() + this.field.cellHeight() / 4,
-                            ship.row * this.field.cellHeight() + this.field.cellHeight() / 2 + shift
-                        );
-                        break;
-                    case 'up':
-                        triangle.moveTo(
-                            ship.col * this.field.cellWidth() + this.field.cellHeight() / 4 + shift,
-                            ship.row * this.field.cellHeight() + this.field.cellHeight() * 0.75
-                        );
-                        triangle.lineTo(
-                            ship.col * this.field.cellWidth() + this.field.cellWidth() * 0.75 + shift,
-                            ship.row * this.field.cellHeight() + this.field.cellHeight() * 0.75
-                        );
-                        triangle.lineTo(
-                            ship.col * this.field.cellWidth() + this.field.cellHeight() / 2 + shift,
-                            ship.row * this.field.cellHeight() + this.field.cellHeight() / 4
-                        );
-                        break;
-                    case 'down':
-                        triangle.moveTo(
-                            ship.col * this.field.cellWidth() + this.field.cellHeight() / 4 + shift,
-                            ship.row * this.field.cellHeight() + this.field.cellHeight() / 4
-                        );
-                        triangle.lineTo(
-                            ship.col * this.field.cellWidth() + this.field.cellWidth() * 0.75 + shift,
-                            ship.row * this.field.cellHeight() + this.field.cellHeight() / 4
-                        );
-                        triangle.lineTo(
-                            ship.col * this.field.cellWidth() + this.field.cellHeight() / 2 + shift,
-                            ship.row * this.field.cellHeight() + this.field.cellHeight() * 0.75
-                        );
-                        break;
-                }
-
-                this.ctx.fill(triangle);
+                //var triangle = new Path2D();
+                //if (ship.isDamaged) {
+                //    shift = ship.isDamaged % 2 ? 5 : -5;
+                //}
+                this.drawTriangle(ship.x, ship.y, ship.animation.angle);
             },
             drawFlag: function (flag) {
                 this.ctx.fillStyle = flag.color;
@@ -428,6 +390,22 @@ var gameInit = function () {
                     if (ship.isDamaged === true) {
                         game.ships[i].isDamaged = 1;
                     }
+                    if (ship.animation.moves[0]) {
+                        //if (ship.animation.checkPosition) {
+                        //    if (Math.pow(ship.x - ship.getX(), 2) + Math.pow(ship.y - ship.getY(), 2) < Math.pow(game.field.cellHeight() / 4, 2)) {
+                        //        ship.animation.checkLimit = true;
+                        //    }
+                        //    if (ship.animation.checkLimit) {
+                        //        game.animations.checkLimit(ship);
+                        //    }
+                        //}
+                        if (ship.animation.collision) {
+                            game.animations.checkCollision(ship);
+                        }
+                        var animationName = Object.keys(ship.animation.moves[0])[0];
+                        var animationParams = ship.animation.moves[0][animationName];
+                        game.animations[animationName](ship, animationParams);
+                    }
                     game.drawShip(ship);
                     if (ship.showCircle) {
                         game.drawCircle(ship);
@@ -439,51 +417,7 @@ var gameInit = function () {
                         game.ships[i].isDamaged = false;
                     }
                     if (ship.cannonballs.length) {
-                        ship.cannonballs.forEach(function (cannonball, i) {
-                            game.drawCannonball(cannonball);
-                            var modifier = cannonball.direction === 'left' ? -config.ship.cannonballSpeed : config.ship.cannonballSpeed;
-                            cannonball.distance = cannonball.distance
-                                ? cannonball.distance + config.ship.cannonballSpeed
-                                : config.ship.cannonballSpeed;
-                            switch (cannonball.shipDirection) {
-                                case 'right':
-                                    cannonball.y += modifier;
-                                    break;
-                                case 'left':
-                                    cannonball.y -= modifier;
-                                    break;
-                                case 'up':
-                                    cannonball.x += modifier;
-                                    break;
-                                case 'down':
-                                    cannonball.x -= modifier;
-                                    break;
-                            }
-                            if (cannonball.distance >= game.field.cellHeight() * 3) {
-                                delete ship.cannonballs[i];
-                                return;
-                            }
-
-                            for (var s in game.ships) {
-                                var ship2 = game.ships[s];
-                                if (Math.abs(ship2.getX() - cannonball.x) < game.field.cellHeight() * 0.25
-                                    && Math.abs(ship2.getY() - cannonball.y) < game.field.cellHeight() * 0.25) {
-                                    if (!ship2.isDead) {
-                                        ship2.takeDamage(ship2.cannonDamage);
-                                        delete ship.cannonballs[i];
-                                        return;
-                                    }
-                                }
-                            }
-                            for (var r in game.rocks) {
-                                var rock = game.rocks[r];
-                                if (Math.abs((rock.col + 0.5) * game.field.cellWidth() - cannonball.x) < (game.field.cellHeight() * 0.25 + 12)
-                                    && Math.abs((rock.row + 0.5) * game.field.cellHeight() - cannonball.y) < (game.field.cellHeight() * 0.25 + 12)) {
-                                    delete ship.cannonballs[i];
-                                    return;
-                                }
-                            }
-                        });
+                        game.animations.cannonFire(ship);
                     }
                 });
 
@@ -535,29 +469,392 @@ var gameInit = function () {
                 game.score.left += points.left;
                 game.score.right += points.right;
             },
-            //findCannonballCollision: function (cannonball) {
-            //    var collidedShips = [];
-            //    for (var i in this.ships) {
-            //        var ship1 = this.ships[i];
-            //        for (var j = Number(i) + 1; j < this.ships.length; j++) {
-            //            var ship2 = this.ships[j];
-            //            var shipX = (ship.col + 0.5) * game.field.cellWidth();
-            //            var shipY = (ship.row + 0.5) * game.field.cellHeight();
-            //            var flagX = (flag.col + 0.5) * game.field.cellWidth();
-            //            var flagY = (flag.row + 0.5) * game.field.cellHeight();
-            //            var flagR = game.field.cellWidth() * 3.5;
-            //            if (Math.pow(shipX - flagX, 2) + Math.pow(shipY - flagY, 2) < Math.pow(flagR, 2)) {
-            //                ships.push(ship);
-            //            }
-            //        }
-            //        this.rocks.forEach(function (rock) {
-            //            if (ship1.col === rock.col && ship1.row === rock.row) {
-            //                collidedShips.push(ship1);
-            //            }
-            //        });
-            //    }
-            //    return collidedShips;
-            //},
+            animations: {
+                //TODO: perform all "takeDamage" here
+                checkCollision: function (ship) {
+                    //if (!(Math.pow(ship.x - ship.getX(), 2) + Math.pow(ship.y - ship.getY(), 2) < Math.pow(game.field.cellHeight() / 4, 2))) {
+                    //    ship.animation.stop = true;
+                    //    ship.animation.checkPosition = false;
+                    //    ship.animation.checkLimit = false;
+                    //    ship.x = ship.getX();
+                    //    ship.y = ship.getY();
+                    //}
+                    if (Math.abs(ship.animation.collision.x - ship.x) < game.field.cellHeight() * 0.75
+                        && Math.abs(ship.animation.collision.y - ship.y) < game.field.cellHeight() * 0.75) {
+                        ship.animation.stop = true;
+                        ship.animation.collision = 0;
+                        ship.x = ship.getX();
+                        ship.y = ship.getY();
+                    }
+                },
+                cannonFire: function (ship) {
+                    ship.cannonballs.forEach(function (cannonball, i) {
+                        game.drawCannonball(cannonball);
+                        var modifier = cannonball.direction === 'left' ? -config.ship.cannonballSpeed : config.ship.cannonballSpeed;
+                        cannonball.distance = cannonball.distance
+                            ? cannonball.distance + config.ship.cannonballSpeed
+                            : config.ship.cannonballSpeed;
+                        switch (cannonball.shipDirection) {
+                            case 'right':
+                                cannonball.y += modifier;
+                                break;
+                            case 'left':
+                                cannonball.y -= modifier;
+                                break;
+                            case 'up':
+                                cannonball.x += modifier;
+                                break;
+                            case 'down':
+                                cannonball.x -= modifier;
+                                break;
+                        }
+                        if (cannonball.distance >= game.field.cellHeight() * 3) {
+                            delete ship.cannonballs[i];
+                            return;
+                        }
+
+                        for (var s in game.ships) {
+                            var ship2 = game.ships[s];
+                            if (Math.abs(ship2.getX() - cannonball.x) < game.field.cellHeight() * 0.25
+                                && Math.abs(ship2.getY() - cannonball.y) < game.field.cellHeight() * 0.25) {
+                                if (!ship2.isDead) {
+                                    ship2.takeDamage(ship2.cannonDamage);
+                                    delete ship.cannonballs[i];
+                                    return;
+                                }
+                            }
+                        }
+                        for (var r in game.rocks) {
+                            var rock = game.rocks[r];
+                            if (Math.abs((rock.col + 0.5) * game.field.cellWidth() - cannonball.x) < (game.field.cellHeight() * 0.25 + 12)
+                                && Math.abs((rock.row + 0.5) * game.field.cellHeight() - cannonball.y) < (game.field.cellHeight() * 0.25 + 12)) {
+                                delete ship.cannonballs[i];
+                                return;
+                            }
+                        }
+                    });
+                },
+                wind: function (ship, wind) {
+                    if (ship.animation.frame === config.animationSpeed.forward || ship.animation.stop) {
+                        ship.animation.frame = 0;
+                        ship.animation.stop = false;
+                        ship.animation.moves.shift();
+                        return;
+                    }
+                    switch (wind.direction) {
+                        case 'left':
+                            ship.x -= game.field.cellHeight() / config.animationSpeed.forward;
+                            break;
+                        case 'right':
+                            ship.x += game.field.cellHeight() / config.animationSpeed.forward;
+                            break;
+                        case 'up':
+                            ship.y -= game.field.cellHeight() / config.animationSpeed.forward;
+                            break;
+                        case 'down':
+                            ship.y += game.field.cellHeight() / config.animationSpeed.forward;
+                            break;
+                    }
+                    ship.animation.frame++;
+                },
+                whirlpool: function (ship, position) {
+                    //var whirlpool = params[0];
+                    //var position = params[1];
+                    var speed = config.animationSpeed.turn;
+                    var side = 'right';
+                    //var side = ship.animation.moves[0].split('-')[1];
+                    ship.animation.frame++;
+                    if (!ship.animation.maxFrameR) {
+                        ship.animation.maxFrameR = speed[0] + speed[1] + speed[0];
+                    }
+                    if (ship.animation.frame > speed[0] + speed[1] + speed[0] || ship.animation.stop) {
+                        ship.animation.frame = 0;
+                        ship.animation.turn = 0;
+                        ship.animation.direction = 0;
+                        ship.animation.moves.shift();
+                        if (ship.animation.stop) {
+                            ship.animation.stop = false;
+                            ship.animation.moves.push({rotate: side});
+                        }
+                        else {
+                            ship.animation.frameR = 0;
+                        }
+                        return;
+                    }
+                    var modifier = 1;
+                    //var directions = ['up', 'right', 'down', 'left'];
+                    //var angleNumber = ship.animation.angle / 90;
+                    //if (angleNumber < 0) {
+                    //    angleNumber = angleNumber % 4 + 4;
+                    //}
+                    //angleNumber %= 4;
+                    //if (!ship.animation.direction) {
+                    //    ship.animation.direction = directions[angleNumber];
+                    //}
+                    switch (position) {
+                        case 0:
+                            if (ship.animation.frame <= speed[0]) {
+                                ship.x += game.field.cellHeight() / 2 / speed[0];
+                            }
+                            else if (ship.animation.frame <= speed[0] + speed[1]) {
+                                var angle = side === 'right' ? 270 : 90;
+                                angle += (90 / speed[1] * (ship.animation.frame - speed[0])) * modifier;
+                                if (!ship.animation.turn) {
+                                    ship.animation.turn = {
+                                        circleX: ship.x,
+                                        circleY: ship.y + game.field.cellWidth() / 2 * modifier,
+                                        circleR: game.field.cellHeight() * 0.5
+                                    };
+                                }
+                                var circleA = Math.PI / 180 * angle;
+                                ship.x = ship.animation.turn.circleX + ship.animation.turn.circleR * Math.cos(circleA);
+                                ship.y = ship.animation.turn.circleY + ship.animation.turn.circleR * Math.sin(circleA);
+                            }
+                            else if (ship.animation.frame <= speed[0] + speed[1] + speed[0]) {
+                                ship.y += (game.field.cellWidth() / 2 / speed[0]) * modifier;
+                            }
+                            break;
+                        case 1:
+                            if (ship.animation.frame <= speed[0]) {
+                                ship.y += (game.field.cellHeight() / 2 / speed[0]);
+                            }
+                            else if (ship.animation.frame <= speed[0] + speed[1]) {
+                                var angle = side === 'right' ? 360 : 180;
+                                angle += (90 / speed[1] * (ship.animation.frame - speed[0])) * modifier;
+                                if (!ship.animation.turn) {
+                                    ship.animation.turn = {
+                                        circleX: ship.x - game.field.cellWidth() / 2 * modifier,
+                                        circleY: ship.y,
+                                        circleR: game.field.cellHeight() * 0.5
+                                    };
+                                }
+                                var circleA = Math.PI / 180 * angle;
+                                ship.x = ship.animation.turn.circleX + ship.animation.turn.circleR * Math.cos(circleA);
+                                ship.y = ship.animation.turn.circleY + ship.animation.turn.circleR * Math.sin(circleA);
+                            }
+                            else if (ship.animation.frame <= speed[0] + speed[1] + speed[0]) {
+                                ship.x -= (game.field.cellWidth() / 2 / speed[0]) * modifier;
+                            }
+                            break;
+                        case 2:
+                            if (ship.animation.frame <= speed[0]) {
+                                ship.x -= game.field.cellHeight() / 2 / speed[0];
+                            }
+                            else if (ship.animation.frame <= speed[0] + speed[1]) {
+                                var angle = side === 'left' ? 270 : 90;
+                                angle += (90 / speed[1] * (ship.animation.frame - speed[0])) * modifier;
+                                if (!ship.animation.turn) {
+                                    ship.animation.turn = {
+                                        circleX: ship.x,
+                                        circleY: ship.y - game.field.cellWidth() / 2 * modifier,
+                                        circleR: game.field.cellHeight() * 0.5
+                                    };
+                                }
+                                var circleA = Math.PI / 180 * angle;
+                                ship.x = ship.animation.turn.circleX + ship.animation.turn.circleR * Math.cos(circleA);
+                                ship.y = ship.animation.turn.circleY + ship.animation.turn.circleR * Math.sin(circleA);
+                            }
+                            else if (ship.animation.frame <= speed[0] + speed[1] + speed[0]) {
+                                ship.y -= (game.field.cellWidth() / 2 / speed[0]) * modifier;
+                            }
+                            break;
+                        case 3:
+                            if (ship.animation.frame <= speed[0]) {
+                                ship.y -= game.field.cellHeight() / 2 / speed[0];
+                            }
+                            else if (ship.animation.frame <= speed[0] + speed[1]) {
+                                var angle = side === 'left' ? 360 : 180;
+                                angle += (90 / speed[1] * (ship.animation.frame - speed[0])) * modifier;
+                                if (!ship.animation.turn) {
+                                    ship.animation.turn = {
+                                        circleX: ship.x + game.field.cellWidth() / 2 * modifier,
+                                        circleY: ship.y,
+                                        circleR: game.field.cellHeight() * 0.5
+                                    };
+                                }
+                                var circleA = Math.PI / 180 * angle;
+                                ship.x = ship.animation.turn.circleX + ship.animation.turn.circleR * Math.cos(circleA);
+                                ship.y = ship.animation.turn.circleY + ship.animation.turn.circleR * Math.sin(circleA);
+                            }
+                            else if (ship.animation.frame <= speed[0] + speed[1] + speed[0]) {
+                                ship.x += (game.field.cellWidth() / 2 / speed[0]) * modifier;
+                            }
+                            break;
+                    }
+                    this.rotate(ship, side);
+                },
+                forward: function (ship) {
+                    if (ship.animation.frame === config.animationSpeed.forward || ship.animation.stop) {
+                        ship.animation.frame = 0;
+                        ship.animation.stop = false;
+                        ship.animation.moves.shift();
+                        return;
+                    }
+                    var directions = ['up', 'right', 'down', 'left'];
+                    var angleNumber = ship.animation.angle / 90;
+                    if (angleNumber < 0) {
+                        angleNumber = angleNumber % 4 + 4;
+                    }
+                    angleNumber %= 4;
+                    switch (directions[angleNumber]) {
+                        case 'left':
+                            ship.x -= game.field.cellHeight() / config.animationSpeed.forward;
+                            break;
+                        case 'right':
+                            ship.x += game.field.cellHeight() / config.animationSpeed.forward;
+                            break;
+                        case 'up':
+                            ship.y -= game.field.cellHeight() / config.animationSpeed.forward;
+                            break;
+                        case 'down':
+                            ship.y += game.field.cellHeight() / config.animationSpeed.forward;
+                            break;
+                    }
+                    ship.animation.frame++;
+                },
+                rotate: function (ship, side) {
+                    var name = Object.keys(ship.animation.moves[0])[0];
+                    if (ship.animation.frameR === ship.animation.maxFrameR) {
+                        ship.animation.frameR = 0;
+                        ship.animation.maxFrameR = 0;
+                        if (name === 'rotate') {
+                            ship.animation.moves.shift();
+                        }
+                        return;
+                    }
+                    //var side = ship.animation.moves[0].split('-')[1];
+                    var step = 90 / ship.animation.maxFrameR;
+                    ship.animation.frameR++;
+                    ship.animation.angle = side === 'left' ? ship.animation.angle - step : ship.animation.angle + step;
+                },
+                turn: function (ship, side) {
+                    var speed = config.animationSpeed.turn;
+                    //var side = ship.animation.moves[0].split('-')[1];
+                    ship.animation.frame++;
+                    if (!ship.animation.maxFrameR) {
+                        ship.animation.maxFrameR = speed[1];
+                    }
+                    if (ship.animation.frame > speed[0] + speed[1] + speed[0] || ship.animation.stop) {
+                        ship.animation.frame = 0;
+                        ship.animation.turn = 0;
+                        ship.animation.direction = 0;
+                        ship.animation.moves.shift();
+                        if (ship.animation.stop) {
+                            ship.animation.stop = false;
+                            ship.animation.moves.push({rotate: side});
+                        }
+                        else {
+                            ship.animation.frameR = 0;
+                        }
+                        return;
+                    }
+                    var modifier = side === 'left' ? -1 : 1;
+                    var directions = ['up', 'right', 'down', 'left'];
+                    var angleNumber = ship.animation.angle / 90;
+                    if (angleNumber < 0) {
+                        angleNumber = angleNumber % 4 + 4;
+                    }
+                    angleNumber %= 4;
+                    if (!ship.animation.direction) {
+                        ship.animation.direction = directions[angleNumber];
+                    }
+                    //console.log(ship.animation.frame);
+                    switch (ship.animation.direction) {
+                        case 'left':
+                            if (ship.animation.frame <= speed[0]) {
+                                ship.x -= game.field.cellHeight() / 2 / speed[0];
+                            }
+                            else if (ship.animation.frame <= speed[0] + speed[1]) {
+                                this.rotate(ship, side);
+                                var angle = side === 'left' ? 270 : 90;
+                                angle += (90 / speed[1] * (ship.animation.frame - speed[0])) * modifier;
+                                if (!ship.animation.turn) {
+                                    ship.animation.turn = {
+                                        circleX: ship.x,
+                                        circleY: ship.y - game.field.cellWidth() / 2 * modifier,
+                                        circleR: game.field.cellHeight() * 0.5
+                                    };
+                                }
+                                var circleA = Math.PI / 180 * angle;
+                                ship.x = ship.animation.turn.circleX + ship.animation.turn.circleR * Math.cos(circleA);
+                                ship.y = ship.animation.turn.circleY + ship.animation.turn.circleR * Math.sin(circleA);
+                            }
+                            else if (ship.animation.frame <= speed[0] + speed[1] + speed[0]) {
+                                ship.y -= (game.field.cellWidth() / 2 / speed[0]) * modifier;
+                            }
+                            break;
+                        case 'right':
+                            if (ship.animation.frame <= speed[0]) {
+                                ship.x += game.field.cellHeight() / 2 / speed[0];
+                            }
+                            else if (ship.animation.frame <= speed[0] + speed[1]) {
+                                this.rotate(ship, side);
+                                var angle = side === 'right' ? 270 : 90;
+                                angle += (90 / speed[1] * (ship.animation.frame - speed[0])) * modifier;
+                                if (!ship.animation.turn) {
+                                    ship.animation.turn = {
+                                        circleX: ship.x,
+                                        circleY: ship.y + game.field.cellWidth() / 2 * modifier,
+                                        circleR: game.field.cellHeight() * 0.5
+                                    };
+                                }
+                                var circleA = Math.PI / 180 * angle;
+                                ship.x = ship.animation.turn.circleX + ship.animation.turn.circleR * Math.cos(circleA);
+                                ship.y = ship.animation.turn.circleY + ship.animation.turn.circleR * Math.sin(circleA);
+                            }
+                            else if (ship.animation.frame <= speed[0] + speed[1] + speed[0]) {
+                                ship.y += (game.field.cellWidth() / 2 / speed[0]) * modifier;
+                            }
+                            break;
+                        case 'up':
+                            if (ship.animation.frame <= speed[0]) {
+                                ship.y -= game.field.cellHeight() / 2 / speed[0];
+                            }
+                            else if (ship.animation.frame <= speed[0] + speed[1]) {
+                                this.rotate(ship, side);
+                                var angle = side === 'left' ? 360 : 180;
+                                angle += (90 / speed[1] * (ship.animation.frame - speed[0])) * modifier;
+                                if (!ship.animation.turn) {
+                                    ship.animation.turn = {
+                                        circleX: ship.x + game.field.cellWidth() / 2 * modifier,
+                                        circleY: ship.y,
+                                        circleR: game.field.cellHeight() * 0.5
+                                    };
+                                }
+                                var circleA = Math.PI / 180 * angle;
+                                ship.x = ship.animation.turn.circleX + ship.animation.turn.circleR * Math.cos(circleA);
+                                ship.y = ship.animation.turn.circleY + ship.animation.turn.circleR * Math.sin(circleA);
+                            }
+                            else if (ship.animation.frame <= speed[0] + speed[1] + speed[0]) {
+                                ship.x += (game.field.cellWidth() / 2 / speed[0]) * modifier;
+                            }
+                            break;
+                        case 'down':
+                            if (ship.animation.frame <= speed[0]) {
+                                ship.y += (game.field.cellHeight() / 2 / speed[0]);
+                            }
+                            else if (ship.animation.frame <= speed[0] + speed[1]) {
+                                this.rotate(ship, side);
+                                var angle = side === 'right' ? 360 : 180;
+                                angle += (90 / speed[1] * (ship.animation.frame - speed[0])) * modifier;
+                                if (!ship.animation.turn) {
+                                    ship.animation.turn = {
+                                        circleX: ship.x - game.field.cellWidth() / 2 * modifier,
+                                        circleY: ship.y,
+                                        circleR: game.field.cellHeight() * 0.5
+                                    };
+                                }
+                                var circleA = Math.PI / 180 * angle;
+                                ship.x = ship.animation.turn.circleX + ship.animation.turn.circleR * Math.cos(circleA);
+                                ship.y = ship.animation.turn.circleY + ship.animation.turn.circleR * Math.sin(circleA);
+                            }
+                            else if (ship.animation.frame <= speed[0] + speed[1] + speed[0]) {
+                                ship.x -= (game.field.cellWidth() / 2 / speed[0]) * modifier;
+                            }
+                            break;
+                    }
+                }
+            },
             findCollisions: function () {
                 var collidedShips = [];
                 for (var i in this.ships) {
@@ -584,11 +881,13 @@ var gameInit = function () {
                         if (ship.turning)
                             ship.turning = false;
                         ship.roundMoves = ship.roundMoves || [{}, {}, {}, {}];
-                        if (ship.roundMoves[move].move !== 'stay')
+                        if (ship.roundMoves[move].move !== 'stay') {
                             ship.restorePosition();
-                        if (ship.roundMoves[move].secondary !== undefined && ship.roundMoves[move].secondary.type === 'wind')
+                        }
+                        if (ship.roundMoves[move].secondary !== undefined && ship.roundMoves[move].secondary.type === 'wind') {
                             ship.restorePosition();
-                        if (ship.roundMoves[move].secondary !== undefined && ship.roundMoves[move].secondary.type === 'whirlpool'){
+                        }
+                        if (ship.roundMoves[move].secondary !== undefined && ship.roundMoves[move].secondary.type === 'whirlpool') {
                             ship.restorePosition();
                             ship.takeDamage(ship.bumpDamage);
                             return 'whirlpool';
@@ -597,6 +896,7 @@ var gameInit = function () {
                     }
                 }
             },
+            //TODO: move timeouts to lobby
             runMove: function (move) {
                 var turningShips = [];
                 this.ships.forEach(function (ship) {
@@ -605,16 +905,19 @@ var gameInit = function () {
                     if (!ship.roundMoves.length) return;
                     switch (ship.roundMoves[move].move) {
                         case 'forward':
-                            ship.forwardMove();
+                            ship.animation.moves.push({forward: ''});
+                            ship.forward();
                             break;
                         case 'turn-left':
-                            if (ship.forwardMove())
+                            ship.animation.moves.push({turn: 'left'});
+                            if (ship.forward())
                                 turningShips.push(ship);
                             ship.rotate('left');
                             ship.turning = true;
                             break;
                         case 'turn-right':
-                            if (ship.forwardMove())
+                            ship.animation.moves.push({turn: 'right'});
+                            if (ship.forward())
                                 turningShips.push(ship);
                             ship.rotate('right');
                             ship.turning = true;
@@ -627,9 +930,19 @@ var gameInit = function () {
                 this.resolveCollisions(move);
                 turningShips.forEach(function (ship) {
                     if (ship.turning)
-                        ship.forwardMove();
+                        ship.forward();
                 });
                 this.resolveCollisions(move);
+
+                setTimeout(function () {
+                    game.runSecondaryMove(move);
+                }, 1500);
+
+                setTimeout(function () {
+                    game.runCannonFire(move);
+                }, 2500);
+            },
+            runCannonFire: function (move) {
                 this.ships.forEach(function (ship) {
                     if (ship.isDead) return;
                     if (!ship.roundMoves.length) return;
@@ -645,15 +958,11 @@ var gameInit = function () {
                         if (!ship.roundMoves.length) return;
                         for (var side in ship.roundMoves[move].fire) {
                             if (ship.roundMoves[move].fire[side] === 2) {
-                                console.log(ship.roundMoves[move].fire[side]);
                                 ship.cannonFire(side);
                             }
                         }
                     });
                 }, 250);
-                setTimeout(function () {
-                    game.runSecondaryMove(move);
-                }, 500);
             },
             runSecondaryMove: function (move) {
                 game.ships.forEach(function (ship) {
@@ -661,6 +970,7 @@ var gameInit = function () {
                         if (ship.col === wind.col && ship.row === wind.row) {
                             ship.roundMoves[move].secondary = wind;
                             ship.windMove(wind);
+                            ship.animation.moves.push({wind: wind});
                             game.resolveCollisions(move);
                         }
                     });
@@ -668,6 +978,7 @@ var gameInit = function () {
                         for (var i = 0; i < 4; i++) {
                             if (ship.col === whirlpool.col[i] && ship.row === whirlpool.row[i]) {
                                 ship.roundMoves[move].secondary = whirlpool;
+                                ship.animation.moves.push({whirlpool: i});
                                 ship.whirlpoolMove(whirlpool, i, 1);
                                 if (game.resolveCollisions(move) === 'whirlpool') {
                                     break;
@@ -702,15 +1013,22 @@ var gameInit = function () {
                     ship.getY = function () {
                         return (this.row + 0.5) * game.field.cellHeight();
                     };
-                    ship.rotate = function (side) {
-                        var directions = ['up', 'right', 'down', 'left'];
-                        var dirIndex = directions.indexOf(this.direction);
-                        if (side == 'left') dirIndex--;
-                        else if (side == 'right') dirIndex++;
-                        if (dirIndex == -1) dirIndex = 3;
-                        else if(dirIndex == 4) dirIndex = 0;
-                        this.direction = directions[dirIndex];
-                    };
+                    ship.x = ship.getX();
+                    ship.y = ship.getY();
+                    switch (ship.direction) {
+                        case 'left':
+                            ship.animation.angle = 270;
+                            break;
+                        case 'right':
+                            ship.animation.angle = 90;
+                            break;
+                        case 'up':
+                            ship.animation.angle = 0;
+                            break;
+                        case 'down':
+                            ship.animation.angle = 180;
+                            break;
+                    }
                     ship.windMove = function (wind) {
                         this.savePosition();
                         switch (wind.direction) {
@@ -783,12 +1101,19 @@ var gameInit = function () {
                             this.rotate('right');
                         }
                     };
-                    ship.forwardMove = function () {
+                    ship.stay = function () {
+                        //do nothing  
+                    };
+                    ship.forward = function () {
                         this.savePosition();
                         switch (this.direction) {
                             case 'up':
                                 if (this.row === 0) {
                                     this.takeDamage(this.bumpDamage);
+                                    this.animation.collision = {
+                                        x: (this.col + 0.5) * game.field.cellWidth(),
+                                        y: (this.row - 1 + 0.5) * game.field.cellHeight()
+                                    };
                                     return false;
                                 }
                                 this.row--;
@@ -796,6 +1121,10 @@ var gameInit = function () {
                             case 'down':
                                 if (this.row === config.field.rows - 1) {
                                     this.takeDamage(this.bumpDamage);
+                                    this.animation.collision = {
+                                        x: (this.col + 0.5) * game.field.cellWidth(),
+                                        y: (this.row + 1 + 0.5) * game.field.cellHeight()
+                                    };
                                     return false;
                                 }
                                 this.row++;
@@ -803,6 +1132,10 @@ var gameInit = function () {
                             case 'left':
                                 if (this.col === 0) {
                                     this.takeDamage(this.bumpDamage);
+                                    this.animation.collision = {
+                                        x: (this.col - 1 + 0.5) * game.field.cellWidth(),
+                                        y: (this.row + 0.5) * game.field.cellHeight()
+                                    };
                                     return false;
                                 }
                                 this.col--;
@@ -810,6 +1143,10 @@ var gameInit = function () {
                             case 'right':
                                 if (this.col === config.field.columns - 1) {
                                     this.takeDamage(this.bumpDamage);
+                                    this.animation.collision = {
+                                        x: (this.col + 1 + 0.5) * game.field.cellWidth(),
+                                        y: (this.row + 0.5) * game.field.cellHeight()
+                                    };
                                     return false;
                                 }
                                 this.col++;
@@ -817,47 +1154,29 @@ var gameInit = function () {
                         }
                         return true;
                     };
-                    ship.turnMove = function (side) {
-                        if (!this.forwardMove()) {
+                    ship.rotate = function (side) {
+                        var directions = ['up', 'right', 'down', 'left'];
+                        var dirIndex = directions.indexOf(this.direction);
+                        if (side == 'left') dirIndex--;
+                        else if (side == 'right') dirIndex++;
+                        if (dirIndex == -1) dirIndex = 3;
+                        else if(dirIndex == 4) dirIndex = 0;
+                        this.direction = directions[dirIndex];
+                    };
+                    ship.turn = function (side) {
+                        if (!this.forward()) {
                             this.rotate(side);
                             return false;
                         }
                         this.rotate(side);
-                        return this.forwardMove();
+                        return this.forward();
                     };
                     ship.move = function (move) {
-                        switch (move) {
-                            case 'forward':
-                                this.movesOrder.push('forward');
-                                break;
-                            case 'turn-left':
-                                this.movesOrder.push('forward');
-                                this.movesOrder.push('rotate');
-                                this.movesOrder.push('left');
-                                this.movesOrder.push('forward');
-                                break;
-                            case 'turn-right':
-                                this.movesOrder.push('forward');
-                                this.movesOrder.push('rotate');
-                                this.movesOrder.push('right');
-                                this.movesOrder.push('forward');
-                                break;
-                            case 'stay':
-                                this.movesOrder.push('stay');
-                                break;
-                            case 'fire-no':
-                                this.movesOrder.push('fire');
-                                this.movesOrder.push('no');
-                                break;
-                            case 'fire-left':
-                                this.movesOrder.push('fire');
-                                this.movesOrder.push('left');
-                                break;
-                            case 'fire-right':
-                                this.movesOrder.push('fire');
-                                this.movesOrder.push('right');
-                                break;
-                        }
+                        var splitStr = move.split('-');
+                        var name = splitStr[0];
+                        var param = splitStr[1] ? splitStr[1] : null;
+                        this.animation.moves.push(move);
+                        this[name](param);
                     };
                     ship.takeDamage = function (val) {
                         if ((this.col < 3 || this.col > config.field.columns - 4) || this.isDead)
@@ -917,6 +1236,13 @@ var gameInit = function () {
                         if (!Object.keys(this.prevPosition).length) {
                             return;
                         }
+                        if (!this.animation.collision) {
+                            this.animation.collision = {
+                                x: (this.col + 0.5) * game.field.cellWidth(),
+                                y: (this.row + 0.5) * game.field.cellHeight()
+                            };
+                        }
+                        //this.animation.checkPosition = true;
                         //this.direction = this.prevPosition.direction;
                         this.col = this.prevPosition.col;
                         this.row = this.prevPosition.row;
@@ -949,6 +1275,8 @@ var gameInit = function () {
                         }
                         return cells;
                     };
+                    //ship.animation.reset = function () {
+                    //};
                 })
             }
         };
@@ -965,28 +1293,34 @@ var gameInit = function () {
     }
 
     //$(document).keydown(function(e) {
-    //    var testShip = game.ships[0];
+    //    var ship = game.ships[0];
     //    switch(e.which) {
     //        case 37: // left
-    //            testShip.turnMove('left');
+    //            ship.animation.moves.push({turn: 'left'});
+    //            ship.turn('left');
     //            break;
     //
     //        case 38: // up
-    //            testShip.forwardMove();
+    //            ship.animation.moves.push({forward: ''});
+    //            ship.forward();
     //            break;
     //
     //        case 39: // right
-    //            testShip.turnMove('right');
+    //            ship.animation.moves.push({turn: 'right'});
+    //            ship.turn('right');
     //            break;
     //
     //        case 40: // down
-    //            console.log(testShip.getSideCells());
+    //            //var sides = ['left', 'right'];
+    //            //var i = Math.floor(Math.random() * 2);
+    //            //ship.animation.moves.push('rotate-' + sides[i]);
+    //            //ship.rotate(sides[i]);
     //            break;
     //        case 65: // leftFire
-    //            testShip.cannonFire('left');
+    //            ship.cannonFire('left');
     //            break;
     //        case 68: // rightFire
-    //            testShip.cannonFire('right');
+    //            ship.cannonFire('right');
     //            break;
     //
     //        default: return; // exit this handler for other keys
@@ -996,7 +1330,7 @@ var gameInit = function () {
     //});
 
     $('#fps').html('<b>FPS: 0</b>');
-    setInterval(function () {
+    game.fpsInterval = setInterval(function () {
         $('#fps').html('<b>FPS: ' + game.frame + '</b>');
         game.frame = 0;
     }, 1000);

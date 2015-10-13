@@ -5,6 +5,10 @@ var config = {
         width: 1920,  //width of the game window in pixels
         height: 1600  //height of the game window in pixels
     },
+    animationSpeed: {
+        forward: 40,
+        turn: [20, 40] // forward/rotate parts of turning move
+    },
     round: {
         number: 5,
         timer: 15  //in seconds
