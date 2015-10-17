@@ -10,7 +10,7 @@ var config = {
         turn: [20, 40] // forward/rotate parts of turning move
     },
     round: {
-        number: 5,
+        number: 10,
         timer: 15  //in seconds
     },
     ship: {
@@ -28,11 +28,6 @@ var config = {
             2: 3,
             3: 2
         }
-    },
-    colors: {
-        userColor: '#00F71D',
-        allyColor: '#42CAFF',
-        enemyColor: 'red'
     },
     wind: {
         numberRange: [10, 15] // min and max number of winds

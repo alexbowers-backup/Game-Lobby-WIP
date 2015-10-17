@@ -23,10 +23,23 @@ var Ship = function (props) {
     this.movesOrder = [];
     this.cannonballs = [];
     this.animation = {
+        fireSmoke: {
+            left: {
+                fire: 0,
+                frame: 0
+            },
+            right: {
+                fire: 0,
+                frame: 0
+            }
+        },
         moves: [],
         frame: 0,
-        frameR: 0,
-        angle: props.team == 'left' ? 90 : 270
+        rotateFrame: 0,
+        smokeFrame: 0,
+        opacity: 1,
+        angle: 0,
+        takeDamage: false
     };
     this.roundMoves = [
         {

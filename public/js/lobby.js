@@ -127,8 +127,8 @@
                         $interval.cancel(lobby.game.round.interval);
                         if (lobby.room.isMaster) {
                             socket.emit('round ended');
-                            lobby.game.timer.setText('loading');
                         }
+                        lobby.game.timer.setText('loading');
                         socket.emit('round data', {
                             ship: game.userShip,
                             moves: lobby.game.round.moves
@@ -205,6 +205,7 @@
                 var interval = $interval(function () {
                     if (i < 4) {
                         game.runMove(i);
+                        lobby.game.timer.setText('move ' + (i + 1) + '/4');
                         game.flags.forEach(function (flag) {
                             if (i === 3) {
                                 game.checkFlag(flag, true);

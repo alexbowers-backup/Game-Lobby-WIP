@@ -1,21 +1,25 @@
-var game;
-var username;
-var config;
-var tooltip;
-var safeZoneImage = new Image();
-safeZoneImage.src = 'images/safe-zone.png';
-var openSeaImage = new Image();
-openSeaImage.src = 'images/open-sea.png';
-var whirlpoolImage = new Image();
-whirlpoolImage.src = 'images/whirlpool.png';
+var game, username, config, tooltip;
+var loadedImages = [
+    'safezone',
+    'opensea',
+    'whirlpool',
+    'cannonball',
+    'explosion',
+    'splash',
+    'smoke',
+    'wind',
+    'rocks',
+    'flags',
+    'ships'
+];
+loadedImages.forEach(function (name) {
+    window[name + 'Image'] = new Image();
+    window[name + 'Image'].src = 'images/' + name + '.png';
+});
 var gameInit = function () {
     var canvasWrap = document.getElementById('game-wrap');
     var canvas = document.getElementById("game");
     var curCol, curRow;
-    var safeZoneImage = new Image();
-    var openSeaImage = new Image();
-    safeZoneImage.src = 'images/safe-zone.png';
-    openSeaImage.src = 'images/open-sea.png';
     tooltip = document.getElementById('tooltip');
     canvas.width = config.field.width;
     canvas.height = config.field.height;
@@ -42,6 +46,7 @@ var gameInit = function () {
         }
         for (var i in game.ships) {
             var ship = game.ships[i];
+            if (ship.isDead) continue;
             if (curCol == ship.col && curRow == ship.row) {
                 tooltip.style.top = (wrapY + 30) + 'px';
                 tooltip.style.left = (wrapX + 30) + 'px';
@@ -62,6 +67,7 @@ var gameInit = function () {
     if (canvas.getContext) {
         game = {
             ctx: canvas.getContext("2d"),
+            animationStack: [],
             lastFrameTime: {},
             ships: [],
             flags: [],
@@ -84,11 +90,40 @@ var gameInit = function () {
                     return this.width / this.columns
                 }
             },
-            runFrame: function (now, fps, i) {
-                this.lastFrameTime[i] = this.lastFrameTime[i] ? this.lastFrameTime[i] : now;
-                var timePassed = now - this.lastFrameTime[i];
+            Animation: {
+                splash: function (x, y) {
+                    this.x = x;
+                    this.y = y;
+                    this.lastFrameTime = 0;
+                    this.frame = 0;
+                    this.maxFrame = 7;
+                    this.speed = 6;
+                    this.type = 'Splash';
+                },
+                explosion: function (x, y) {
+                    this.x = x;
+                    this.y = y;
+                    this.lastFrameTime = 0;
+                    this.frame = 0;
+                    this.maxFrame = 8;
+                    this.speed = 7;
+                    this.type = 'Explosion';
+                },
+                speedController: function (obj, now) {
+                    obj.lastFrameTime = obj.lastFrameTime ? obj.lastFrameTime : now;
+                    var timePassed = now - obj.lastFrameTime;
+                    if (timePassed >= 999 / obj.speed) {
+                        obj.lastFrameTime = now;
+                        return true;
+                    }
+                    return false;
+                }
+            },
+            runFrame: function (now, fps, animationName) {
+                this.lastFrameTime[animationName] = this.lastFrameTime[animationName] ? this.lastFrameTime[animationName] : now;
+                var timePassed = now - this.lastFrameTime[animationName];
                 if (timePassed >= 999 / fps) {
-                    this.lastFrameTime[i] = now;
+                    this.lastFrameTime[animationName] = now;
                     return true;
                 }
                 return false;
@@ -113,7 +148,7 @@ var gameInit = function () {
                 for (var i = 0; i < game.field.columns; i++) {
                     for (var j = 0; j < config.field.rows; j++) {
                         this.ctx.drawImage(
-                            safeZoneImage,
+                            safezoneImage,
                             this.field.cellWidth() * i,
                             this.field.cellHeight() * j,
                             this.field.cellWidth(),
@@ -127,7 +162,7 @@ var gameInit = function () {
                 for (var i = 3; i < game.field.columns - 3; i++) {
                     for (var j = 0; j < config.field.rows; j++) {
                         this.ctx.drawImage(
-                            openSeaImage,
+                            openseaImage,
                             this.field.cellWidth() * i,
                             this.field.cellHeight() * j,
                             this.field.cellWidth(),
@@ -137,84 +172,178 @@ var gameInit = function () {
 
                 }
             },
-            drawTriangle: function (x, y, angle) {
-                this.ctx.save();
-                this.ctx.translate(x, y);
-                this.ctx.rotate(angle * Math.PI / 180);
-                this.ctx.translate(-x, -y);
-                var triangle = new Path2D();
-                triangle.moveTo(
-                    x,
-                    y - this.field.cellHeight() * 0.25
+            //drawExplosion: function (ship) {
+            //    if (ship.animation.explosionFrame === 8) {
+            //        ship.isDamaged = false;
+            //        ship.animation.explosionFrame = 0;
+            //        return;
+            //    }
+            //    this.ctx.drawImage(
+            //        explosionImage,
+            //        ship.animation.explosionFrame * this.field.cellWidth(), 0,
+            //        this.field.cellWidth(), this.field.cellHeight(),
+            //        ship.x - this.field.cellWidth() / 2, ship.y - this.field.cellHeight() / 2,
+            //        this.field.cellWidth(), this.field.cellHeight()
+            //    );
+            //},
+            drawExplosion: function (x, y, frame) {
+                this.ctx.drawImage(
+                    explosionImage,
+                    frame * this.field.cellWidth(), 0,
+                    this.field.cellWidth(), this.field.cellHeight(),
+                    x - this.field.cellWidth() / 2, y - this.field.cellHeight() / 2,
+                    this.field.cellWidth(), this.field.cellHeight()
                 );
-                triangle.lineTo(
-                    x + this.field.cellWidth() * 0.25,
-                    y + this.field.cellHeight() * 0.25
+            },
+
+            drawSplash: function (x, y, frame) {
+                this.ctx.drawImage(
+                    splashImage,
+                    frame * this.field.cellWidth(), 0,
+                    this.field.cellWidth(), this.field.cellHeight(),
+                    x - this.field.cellWidth() / 2, y - this.field.cellHeight() / 2,
+                    this.field.cellWidth(), this.field.cellHeight()
                 );
-                triangle.lineTo(
-                    x - this.field.cellWidth() * 0.25,
-                    y + this.field.cellHeight() * 0.25
-                );
-                this.ctx.fill(triangle);
-                this.ctx.restore();
+            },
+            drawSmoke: function (ship) {
+                ['left', 'right'].forEach(function (side) {
+                    //var cannonball = ship.cannonballs[0];
+                    if (!ship.animation.fireSmoke[side].fire) return;
+                    if (ship.animation.fireSmoke[side].frame === 7) {
+                        ship.animation.fireSmoke[side].frame = 0;
+                        ship.animation.fireSmoke[side].fire = 0;
+                        return;
+                    }
+                        var angle;
+                        switch (ship.direction) {
+                            case 'right':
+                                angle = side === 'left' ? 0 : 180;
+                                break;
+                            case 'left':
+                                angle = side === 'left' ? 180 : 0;
+                                break;
+                            case 'up':
+                                angle = side === 'left' ? 270 : 90;
+                                break;
+                            case 'down':
+                                angle = side === 'left' ? 90 : 270;
+                                break;
+                        }
+                        game.ctx.save();
+                        game.ctx.translate(ship.x, ship.y);
+                        game.ctx.rotate(angle * Math.PI / 180);
+                        game.ctx.translate(-ship.x, -ship.y);
+                        game.ctx.drawImage(
+                            smokeImage,
+                            ship.animation.fireSmoke[side].frame * game.field.cellWidth(), 0,
+                            game.field.cellWidth(), game.field.cellHeight(),
+                            ship.x - game.field.cellWidth() / 2, ship.y - game.field.cellHeight() * 1.15,
+                            game.field.cellWidth(), game.field.cellHeight()
+                        );
+                        game.ctx.restore();
+                });
             },
             drawShip: function (ship) {
-                //var shift = 0;
+                var imageShift = 0;
                 if (ship.isDead) {
-                    this.ctx.fillStyle = 'black';
+                    if (ship.animation.opacity > 0.02) {
+                        ship.animation.opacity -= 0.01;
+                    }
+                }
+                if (ship.name === game.userShip.name) {
+                    ship.color = 'player';
+                }
+                else if (ship.team === game.userShip.team) {
+                    ship.color = 'ally';
+                    imageShift = this.field.cellWidth();
                 }
                 else {
-                    if (ship.name === game.userShip.name) {
-                        this.ctx.fillStyle = config.colors.userColor;
-                        ship.teamColor = config.colors.allyColor;
-                    }
-                    else if (ship.team === game.userShip.team) {
-                        this.ctx.fillStyle = config.colors.allyColor;
-                        ship.teamColor = config.colors.allyColor;
-                    }
-                    else {
-                        this.ctx.fillStyle = config.colors.enemyColor;
-                        ship.teamColor = config.colors.enemyColor;
-                    }
+                    ship.color = 'enemy';
+                    imageShift = this.field.cellWidth() * 2;
                 }
-                //var triangle = new Path2D();
-                //if (ship.isDamaged) {
-                //    shift = ship.isDamaged % 2 ? 5 : -5;
-                //}
-                this.drawTriangle(ship.x, ship.y, ship.animation.angle);
+
+                this.ctx.save();
+                this.ctx.translate(ship.x, ship.y);
+                this.ctx.rotate(ship.animation.angle * Math.PI / 180);
+                this.ctx.translate(-ship.x, -ship.y);
+                this.ctx.globalAlpha = ship.animation.opacity;
+                this.ctx.drawImage(
+                    shipsImage,
+                    imageShift, 0,
+                    this.field.cellWidth(), this.field.cellHeight(),
+                    ship.x - this.field.cellWidth() / 2, ship.y - this.field.cellHeight() / 2,
+                    this.field.cellWidth(), this.field.cellHeight()
+                );
+                this.ctx.restore();
             },
             drawFlag: function (flag) {
-                this.ctx.fillStyle = flag.color;
-                this.ctx.fillRect(
-                    flag.col * this.field.cellWidth() + this.field.cellWidth() * 0.125,
-                    flag.row * this.field.cellHeight() + this.field.cellHeight() * 0.25,
-                    this.field.cellWidth() * 0.750,
-                    this.field.cellHeight() * 0.5
+                var imageShift;
+                switch (flag.color) {
+                    case 'neutral':
+                        imageShift = 0;
+                        this.ctx.drawImage(
+                            flagsImage,
+                            0, this.field.cellWidth() * 3,
+                            this.field.cellWidth(), this.field.cellHeight(),
+                            (flag.col) * this.field.cellWidth(), (flag.row) * this.field.cellHeight(),
+                            this.field.cellWidth(), this.field.cellHeight()
+                        );
+                        this.ctx.drawImage(
+                            flagsImage,
+                            this.field.cellWidth(), this.field.cellHeight() * 3,
+                            this.field.cellWidth(), this.field.cellHeight(),
+                            (flag.col) * this.field.cellWidth(), (flag.row) * this.field.cellHeight(),
+                            this.field.cellWidth(), this.field.cellHeight()
+                        );
+                        break;
+                    case 'player' :
+                    case 'ally':
+                        imageShift = this.field.cellWidth();
+                        this.ctx.drawImage(
+                            flagsImage,
+                            0, this.field.cellWidth() * 3,
+                            this.field.cellWidth(), this.field.cellHeight(),
+                            (flag.col) * this.field.cellWidth(), (flag.row) * this.field.cellHeight(),
+                            this.field.cellWidth(), this.field.cellHeight()
+                        );
+                        break;
+                    case 'enemy':
+                        imageShift = this.field.cellWidth() * 2;
+                        this.ctx.drawImage(
+                            flagsImage,
+                            0, this.field.cellWidth() * 3,
+                            this.field.cellWidth(), this.field.cellHeight(),
+                            (flag.col) * this.field.cellWidth(), (flag.row) * this.field.cellHeight(),
+                            this.field.cellWidth(), this.field.cellHeight()
+                        );
+                        break;
+                    case 'conflict':
+                        imageShift = this.field.cellWidth() * 3;
+                        this.ctx.drawImage(
+                            flagsImage,
+                            this.field.cellWidth() * 3, this.field.cellHeight() * 3,
+                            this.field.cellWidth(), this.field.cellHeight(),
+                            (flag.col) * this.field.cellWidth(), (flag.row) * this.field.cellHeight(),
+                            this.field.cellWidth(), this.field.cellHeight()
+                        );
+                        break;
+                }
+                this.ctx.drawImage(
+                    flagsImage,
+                    imageShift, (flag.points - 1) * this.field.cellHeight(),
+                    this.field.cellWidth(), this.field.cellHeight(),
+                    (flag.col) * this.field.cellWidth(), (flag.row ) * this.field.cellHeight(),
+                    this.field.cellWidth(), this.field.cellHeight()
                 );
-                this.ctx.fillStyle = flag.color === 'white' ? 'black': 'white';
-                this.ctx.font = (this.field.cellWidth() * 0.375) + 'px Arial';
-                this.ctx.fillText(
-                    flag.points,
-                    (flag.col * this.field.cellWidth() + this.field.cellWidth() * 0.5) - (this.field.cellWidth() * 0.375) * 0.25,
-                    (flag.row * this.field.cellHeight() + this.field.cellHeight() * 0.5) + (this.field.cellWidth() * 0.375) * 0.33
-                );
-
             },
             drawRock: function (rock) {
-                this.ctx.beginPath();
-                this.ctx.arc(
-                    rock.col * this.field.cellWidth() + this.field.cellWidth() * 0.5,
-                    rock.row * this.field.cellHeight() + this.field.cellHeight() * 0.5,
-                    this.field.cellWidth() * 0.3,
-                    0,
-                    2 * Math.PI,
-                    false
+                this.ctx.drawImage(
+                    rocksImage,
+                    rock.shift * this.field.cellWidth(), 0,
+                    this.field.cellWidth(), this.field.cellHeight(),
+                    rock.col * this.field.cellWidth(), rock.row * this.field.cellHeight(),
+                    this.field.cellWidth(), this.field.cellHeight()
                 );
-                this.ctx.fillStyle = 'white';
-                this.ctx.fill();
-                this.ctx.lineWidth = 3;
-                this.ctx.stroke();
-                this.ctx.lineWidth = 1;
             },
             drawWhirlpool: function (whirlpool) {
                 this.ctx.drawImage(
@@ -226,124 +355,36 @@ var gameInit = function () {
                 );
             },
             drawWind: function (wind) {
-                this.ctx.fillStyle = 'black';
-                this.ctx.fillStyle = 'black';
-                this.ctx.lineWidth = 4;
-                var arrow = new Path2D();
+                var windX = (wind.col + 0.5) * this.field.cellWidth();
+                var windY = (wind.row + 0.5) * this.field.cellHeight();
+                var windAngle;
+                this.ctx.save();
+                this.ctx.translate(windX, windY);
                 switch (wind.direction) {
-                    case 'right':
-                        arrow.moveTo(
-                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 6,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 4
-                        );
-                        arrow.lineTo(
-                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 2,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 2
-                        );
-                        arrow.lineTo(
-                            wind.col * this.field.cellWidth() + this.field.cellWidth() / 6,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() * 0.75
-                        );
-
-                        arrow.moveTo(
-                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 2,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 4
-                        );
-                        arrow.lineTo(
-                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 6 * 5,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 2
-                        );
-                        arrow.lineTo(
-                            wind.col * this.field.cellWidth() + this.field.cellWidth() / 2,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() * 0.75
-                        );
-                        break;
                     case 'left':
-                        arrow.moveTo(
-                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 2,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 4
-                        );
-                        arrow.lineTo(
-                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 6,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 2
-                        );
-                        arrow.lineTo(
-                            wind.col * this.field.cellWidth() + this.field.cellWidth() / 2,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() * 0.75
-                        );
-
-                        arrow.moveTo(
-                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 6 * 5,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 4
-                        );
-                        arrow.lineTo(
-                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 2,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 2
-                        );
-                        arrow.lineTo(
-                            wind.col * this.field.cellWidth() + this.field.cellWidth() / 6 * 5,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() * 0.75
-                        );
+                        windAngle = 270;
+                        break;
+                    case 'right':
+                        windAngle = 90;
                         break;
                     case 'up':
-                        arrow.moveTo(
-                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 4,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 2
-                        );
-                        arrow.lineTo(
-                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 2,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 6
-                        );
-                        arrow.lineTo(
-                            wind.col * this.field.cellWidth() + this.field.cellWidth() * 0.75,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 2
-                        );
-
-                        arrow.moveTo(
-                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 4,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 6 * 5
-                        );
-                        arrow.lineTo(
-                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 2,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 2
-                        );
-                        arrow.lineTo(
-                            wind.col * this.field.cellWidth() + this.field.cellWidth() * 0.75,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 6 * 5
-                        );
+                        windAngle = 0;
                         break;
                     case 'down':
-                        arrow.moveTo(
-                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 4,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 6
-                        );
-                        arrow.lineTo(
-                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 2,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 2
-                        );
-                        arrow.lineTo(
-                            wind.col * this.field.cellWidth() + this.field.cellWidth() * 0.75,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 6
-                        );
-
-                        arrow.moveTo(
-                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 4,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 2
-                        );
-                        arrow.lineTo(
-                            wind.col * this.field.cellWidth() + this.field.cellHeight() / 2,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 6 * 5
-                        );
-                        arrow.lineTo(
-                            wind.col * this.field.cellWidth() + this.field.cellWidth() * 0.75,
-                            wind.row * this.field.cellHeight() + this.field.cellHeight() / 2
-                        );
+                        windAngle = 180;
                         break;
                 }
-                this.ctx.stroke(arrow);
-                this.ctx.lineWidth = 1;
+                this.ctx.rotate(windAngle * Math.PI / 180);
+                this.ctx.translate(-windX, -windY);
+                this.ctx.drawImage(
+                    windImage,
+                    wind.col * this.field.cellWidth(), wind.row * this.field.cellHeight(),
+                    64, 64
+                );
+                this.ctx.restore();
             },
             drawCircle: function (ship) {
+                if (ship.isDead) return;
                 this.ctx.beginPath();
                 this.ctx.arc(
                    ship.col * this.field.cellWidth() + this.field.cellWidth() * 0.5,
@@ -357,19 +398,24 @@ var gameInit = function () {
                 this.ctx.stroke();
             },
             drawCannonball: function (cannonball) {
-                this.ctx.beginPath();
-                this.ctx.lineWidth = 4;
-                this.ctx.arc(
-                    cannonball.x,
-                    cannonball.y,
-                    this.field.cellWidth() * 0.125,
-                    0,
-                    2 * Math.PI,
-                    false
+                this.ctx.drawImage(
+                    cannonballImage,
+                    cannonball.x - cannonballImage.width / 2, cannonball.y - cannonballImage.height / 2,
+                    cannonballImage.width, cannonballImage.height
                 );
-                this.ctx.fillStyle = 'yellow';
-                this.ctx.fill();
-                this.ctx.lineWidth = 1;
+                //this.ctx.beginPath();
+                //this.ctx.lineWidth = 4;
+                //this.ctx.arc(
+                //    cannonball.x,
+                //    cannonball.y,
+                //    this.field.cellWidth() * 0.125,
+                //    0,
+                //    2 * Math.PI,
+                //    false
+                //);
+                //this.ctx.fillStyle = 'yellow';
+                //this.ctx.fill();
+                //this.ctx.lineWidth = 1;
             },
             update: function (now) {
                 this.drawZones();
@@ -387,18 +433,10 @@ var gameInit = function () {
                     game.drawRock(rock);
                 });
                 this.ships.forEach(function (ship, i) {
-                    if (ship.isDamaged === true) {
-                        game.ships[i].isDamaged = 1;
-                    }
+                    //if (ship.isDamaged === true) {
+                    //    game.ships[i].isDamaged = 1;
+                    //}
                     if (ship.animation.moves[0]) {
-                        //if (ship.animation.checkPosition) {
-                        //    if (Math.pow(ship.x - ship.getX(), 2) + Math.pow(ship.y - ship.getY(), 2) < Math.pow(game.field.cellHeight() / 4, 2)) {
-                        //        ship.animation.checkLimit = true;
-                        //    }
-                        //    if (ship.animation.checkLimit) {
-                        //        game.animations.checkLimit(ship);
-                        //    }
-                        //}
                         if (ship.animation.collision) {
                             game.animations.checkCollision(ship);
                         }
@@ -410,14 +448,46 @@ var gameInit = function () {
                     if (ship.showCircle) {
                         game.drawCircle(ship);
                     }
-                    if (ship.isDamaged !== false) {
-                        game.ships[i].isDamaged++;
-                    }
-                    if (ship.isDamaged > 10) {
-                        game.ships[i].isDamaged = false;
-                    }
+                    //if (ship.isDamaged) {
+                    //    game.animationStack.push(new game.Animation.explosion(ship.x, ship.y));
+                    //    ship.isDamaged = false;
+                    //    //game.drawExplosion(ship);
+                    //    //if (game.runFrame(now, 7, ship.name + 'explosion')) {
+                    //    //    ship.animation.explosionFrame++;
+                    //    //}
+                    //}
+                    //if (ship.isDamaged !== false) {
+                    //    game.ships[i].isDamaged++;
+                    //}
+                    //if (ship.isDamaged > 10) {
+                    //    game.ships[i].isDamaged = false;
+                    //}
                     if (ship.cannonballs.length) {
                         game.animations.cannonFire(ship);
+                        //if (ship.animation.fireSmoke.left.fire || ship.animation.fireSmoke.right.fire) {
+                            game.drawSmoke(ship);
+                            if (game.runFrame(now, 12, ship.name + 'smoke')) {
+                                ship.animation.fireSmoke.left.frame = ship.animation.fireSmoke.left.fire
+                                    ? ship.animation.fireSmoke.left.frame + 1
+                                    : 0;
+                                ship.animation.fireSmoke.right.frame = ship.animation.fireSmoke.right.fire
+                                    ? ship.animation.fireSmoke.right.frame + 1
+                                    : 0;
+                                //ship.animation.fireSmoke.left.frame++;
+                                //ship.animation.fireSmoke.right.frame++;
+                            }
+                        //}
+                    }
+                    if (game.animationStack.length) {
+                        game.animationStack.forEach(function (animation, i) {
+                            game['draw' + animation.type](animation.x, animation.y, animation.frame);
+                            if (game.Animation.speedController(animation, now)) {
+                                animation.frame++;
+                            }
+                            if (animation.frame >= animation.maxFrame) {
+                                delete game.animationStack[i];
+                            }
+                        });
                     }
                 });
 
@@ -451,16 +521,16 @@ var gameInit = function () {
                     left: 0,
                     right: 0
                 };
-                flag.color = 'white';
+                flag.color = 'neutral';
                 ships.forEach(function (ship) {
                     teams[ship.team] = true;
                     if (teams.left && teams.right) {
-                        flag.color = 'black';
+                        flag.color = 'conflict';
                         points.left = 0;
                         points.right = 0;
                     }
                     else {
-                        flag.color = ship.teamColor;
+                        flag.color = ship.color;
                         if (lastRound) {
                             points[ship.team] = flag.points;
                         }
@@ -470,21 +540,24 @@ var gameInit = function () {
                 game.score.right += points.right;
             },
             animations: {
-                //TODO: perform all "takeDamage" here
                 checkCollision: function (ship) {
-                    //if (!(Math.pow(ship.x - ship.getX(), 2) + Math.pow(ship.y - ship.getY(), 2) < Math.pow(game.field.cellHeight() / 4, 2))) {
-                    //    ship.animation.stop = true;
-                    //    ship.animation.checkPosition = false;
-                    //    ship.animation.checkLimit = false;
-                    //    ship.x = ship.getX();
-                    //    ship.y = ship.getY();
-                    //}
                     if (Math.abs(ship.animation.collision.x - ship.x) < game.field.cellHeight() * 0.75
                         && Math.abs(ship.animation.collision.y - ship.y) < game.field.cellHeight() * 0.75) {
                         ship.animation.stop = true;
-                        ship.animation.collision = 0;
                         ship.x = ship.getX();
                         ship.y = ship.getY();
+                        ship.takeDamage(ship.bumpDamage);
+                        if (ship.animation.collision.type === 'ship') {
+                            game.ships.forEach(function (ship1) {
+                                if (ship.name !== ship1.name &&
+                                    ship.animation.collision.x === ship1.animation.collision.x &&
+                                    ship.animation.collision.y === ship1.animation.collision.y)
+                                {
+                                    ship1.takeDamage(ship1.bumpDamage);
+                                }
+                            });
+                        }
+                        ship.animation.collision = 0;
                     }
                 },
                 cannonFire: function (ship) {
@@ -509,6 +582,7 @@ var gameInit = function () {
                                 break;
                         }
                         if (cannonball.distance >= game.field.cellHeight() * 3) {
+                            game.animationStack.push(new game.Animation.splash(cannonball.x, cannonball.y));
                             delete ship.cannonballs[i];
                             return;
                         }
@@ -528,6 +602,8 @@ var gameInit = function () {
                             var rock = game.rocks[r];
                             if (Math.abs((rock.col + 0.5) * game.field.cellWidth() - cannonball.x) < (game.field.cellHeight() * 0.25 + 12)
                                 && Math.abs((rock.row + 0.5) * game.field.cellHeight() - cannonball.y) < (game.field.cellHeight() * 0.25 + 12)) {
+                                //game.animationStack.push(new game.Animation.explosion((rock.col + 0.5) * game.field.cellWidth(), (rock.row + 0.5) * game.field.cellHeight()));
+                                game.animationStack.push(new game.Animation.explosion(cannonball.x, cannonball.y));
                                 delete ship.cannonballs[i];
                                 return;
                             }
@@ -558,15 +634,10 @@ var gameInit = function () {
                     ship.animation.frame++;
                 },
                 whirlpool: function (ship, position) {
-                    //var whirlpool = params[0];
-                    //var position = params[1];
                     var speed = config.animationSpeed.turn;
                     var side = 'right';
-                    //var side = ship.animation.moves[0].split('-')[1];
                     ship.animation.frame++;
-                    if (!ship.animation.maxFrameR) {
-                        ship.animation.maxFrameR = speed[0] + speed[1] + speed[0];
-                    }
+                    ship.animation.maxRotateFrame = speed[0] + speed[1] + speed[0];
                     if (ship.animation.frame > speed[0] + speed[1] + speed[0] || ship.animation.stop) {
                         ship.animation.frame = 0;
                         ship.animation.turn = 0;
@@ -577,20 +648,11 @@ var gameInit = function () {
                             ship.animation.moves.push({rotate: side});
                         }
                         else {
-                            ship.animation.frameR = 0;
+                            ship.animation.rotateFrame = 0;
                         }
                         return;
                     }
                     var modifier = 1;
-                    //var directions = ['up', 'right', 'down', 'left'];
-                    //var angleNumber = ship.animation.angle / 90;
-                    //if (angleNumber < 0) {
-                    //    angleNumber = angleNumber % 4 + 4;
-                    //}
-                    //angleNumber %= 4;
-                    //if (!ship.animation.direction) {
-                    //    ship.animation.direction = directions[angleNumber];
-                    //}
                     switch (position) {
                         case 0:
                             if (ship.animation.frame <= speed[0]) {
@@ -714,26 +776,23 @@ var gameInit = function () {
                 },
                 rotate: function (ship, side) {
                     var name = Object.keys(ship.animation.moves[0])[0];
-                    if (ship.animation.frameR === ship.animation.maxFrameR) {
-                        ship.animation.frameR = 0;
-                        ship.animation.maxFrameR = 0;
+                    if (ship.animation.rotateFrame === ship.animation.maxRotateFrame) {
+                        ship.animation.rotateFrame = 0;
+                        ship.animation.maxRotateFrame = 0;
                         if (name === 'rotate') {
                             ship.animation.moves.shift();
                         }
                         return;
                     }
                     //var side = ship.animation.moves[0].split('-')[1];
-                    var step = 90 / ship.animation.maxFrameR;
-                    ship.animation.frameR++;
+                    var step = 90 / ship.animation.maxRotateFrame;
+                    ship.animation.rotateFrame++;
                     ship.animation.angle = side === 'left' ? ship.animation.angle - step : ship.animation.angle + step;
                 },
                 turn: function (ship, side) {
                     var speed = config.animationSpeed.turn;
-                    //var side = ship.animation.moves[0].split('-')[1];
                     ship.animation.frame++;
-                    if (!ship.animation.maxFrameR) {
-                        ship.animation.maxFrameR = speed[1];
-                    }
+                    ship.animation.maxRotateFrame = speed[1];
                     if (ship.animation.frame > speed[0] + speed[1] + speed[0] || ship.animation.stop) {
                         ship.animation.frame = 0;
                         ship.animation.turn = 0;
@@ -744,7 +803,7 @@ var gameInit = function () {
                             ship.animation.moves.push({rotate: side});
                         }
                         else {
-                            ship.animation.frameR = 0;
+                            ship.animation.rotateFrame = 0;
                         }
                         return;
                     }
@@ -758,7 +817,6 @@ var gameInit = function () {
                     if (!ship.animation.direction) {
                         ship.animation.direction = directions[angleNumber];
                     }
-                    //console.log(ship.animation.frame);
                     switch (ship.animation.direction) {
                         case 'left':
                             if (ship.animation.frame <= speed[0]) {
@@ -859,8 +917,10 @@ var gameInit = function () {
                 var collidedShips = [];
                 for (var i in this.ships) {
                     var ship1 = this.ships[i];
+                    if (ship1.isDead) continue;
                     for (var j = Number(i) + 1; j < this.ships.length; j++) {
                         var ship2 = this.ships[j];
+                        if (ship2.isDead) continue;
                         if (ship1.col === ship2.col && ship1.row === ship2.row) {
                             collidedShips.push(ship1, ship2);
                         }
@@ -881,6 +941,13 @@ var gameInit = function () {
                         if (ship.turning)
                             ship.turning = false;
                         ship.roundMoves = ship.roundMoves || [{}, {}, {}, {}];
+                        if (!ship.animation.collision) {
+                            ship.animation.collision = {
+                                x: (ship.col + 0.5) * game.field.cellWidth(),
+                                y: (ship.row + 0.5) * game.field.cellHeight(),
+                                type: ships.length === 1 ? 'rock' : 'ship'
+                            };
+                        }
                         if (ship.roundMoves[move].move !== 'stay') {
                             ship.restorePosition();
                         }
@@ -889,14 +956,13 @@ var gameInit = function () {
                         }
                         if (ship.roundMoves[move].secondary !== undefined && ship.roundMoves[move].secondary.type === 'whirlpool') {
                             ship.restorePosition();
-                            ship.takeDamage(ship.bumpDamage);
+                            //ship.takeDamage(ship.bumpDamage);
                             return 'whirlpool';
                         }
-                        ship.takeDamage(ship.bumpDamage);
+                        //ship.takeDamage(ship.bumpDamage);
                     }
                 }
             },
-            //TODO: move timeouts to lobby
             runMove: function (move) {
                 var turningShips = [];
                 this.ships.forEach(function (ship) {
@@ -940,7 +1006,7 @@ var gameInit = function () {
 
                 setTimeout(function () {
                     game.runCannonFire(move);
-                }, 2500);
+                }, 3000);
             },
             runCannonFire: function (move) {
                 this.ships.forEach(function (ship) {
@@ -966,14 +1032,16 @@ var gameInit = function () {
             },
             runSecondaryMove: function (move) {
                 game.ships.forEach(function (ship) {
-                    game.winds.forEach(function (wind) {
+                    for (var i in game.winds) {
+                        var wind = game.winds[i];
                         if (ship.col === wind.col && ship.row === wind.row) {
                             ship.roundMoves[move].secondary = wind;
                             ship.windMove(wind);
                             ship.animation.moves.push({wind: wind});
                             game.resolveCollisions(move);
+                            return;
                         }
-                    });
+                    }
                     game.whirlpools.forEach(function (whirlpool) {
                         for (var i = 0; i < 4; i++) {
                             if (ship.col === whirlpool.col[i] && ship.row === whirlpool.row[i]) {
@@ -1033,34 +1101,23 @@ var gameInit = function () {
                         this.savePosition();
                         switch (wind.direction) {
                             case 'up':
-                                if (this.row === 0) {
-                                    this.takeDamage(this.bumpDamage);
-                                    return false;
-                                }
                                 this.row--;
                                 break;
                             case 'down':
-                                if (this.row === config.field.rows - 1) {
-                                    this.takeDamage(this.bumpDamage);
-                                    return false;
-                                }
                                 this.row++;
                                 break;
                             case 'left':
-                                if (this.col === 0) {
-                                    this.takeDamage(this.bumpDamage);
-                                    return false;
-                                }
                                 this.col--;
                                 break;
                             case 'right':
-                                if (this.col === config.field.columns - 1) {
-                                    this.takeDamage(this.bumpDamage);
-                                    return false;
-                                }
                                 this.col++;
                                 break;
                         }
+                        if (!this.isOnField()) {
+                            this.restorePosition();
+                            return false;
+                        }
+                        return true;
                     };
                     ship.whirlpoolMove = function (whirlpool, i, part) {
                         switch (i) {
@@ -1108,49 +1165,21 @@ var gameInit = function () {
                         this.savePosition();
                         switch (this.direction) {
                             case 'up':
-                                if (this.row === 0) {
-                                    this.takeDamage(this.bumpDamage);
-                                    this.animation.collision = {
-                                        x: (this.col + 0.5) * game.field.cellWidth(),
-                                        y: (this.row - 1 + 0.5) * game.field.cellHeight()
-                                    };
-                                    return false;
-                                }
                                 this.row--;
                                 break;
                             case 'down':
-                                if (this.row === config.field.rows - 1) {
-                                    this.takeDamage(this.bumpDamage);
-                                    this.animation.collision = {
-                                        x: (this.col + 0.5) * game.field.cellWidth(),
-                                        y: (this.row + 1 + 0.5) * game.field.cellHeight()
-                                    };
-                                    return false;
-                                }
                                 this.row++;
                                 break;
                             case 'left':
-                                if (this.col === 0) {
-                                    this.takeDamage(this.bumpDamage);
-                                    this.animation.collision = {
-                                        x: (this.col - 1 + 0.5) * game.field.cellWidth(),
-                                        y: (this.row + 0.5) * game.field.cellHeight()
-                                    };
-                                    return false;
-                                }
                                 this.col--;
                                 break;
                             case 'right':
-                                if (this.col === config.field.columns - 1) {
-                                    this.takeDamage(this.bumpDamage);
-                                    this.animation.collision = {
-                                        x: (this.col + 1 + 0.5) * game.field.cellWidth(),
-                                        y: (this.row + 0.5) * game.field.cellHeight()
-                                    };
-                                    return false;
-                                }
                                 this.col++;
                                 break;
+                        }
+                        if (!this.isOnField()) {
+                            this.restorePosition();
+                            return false;
                         }
                         return true;
                     };
@@ -1182,7 +1211,9 @@ var gameInit = function () {
                         if ((this.col < 3 || this.col > config.field.columns - 4) || this.isDead)
                             return;
                         this.hp -= val;
-                        this.isDamaged = true;
+                        game.animationStack.push(new game.Animation.explosion(ship.x, ship.y));
+                        //this.isDamaged = true;
+                        //this.animation.explosionFrame = 0;
                         if (this.hp <= 0){
                             this.hp = 0;
                             this.isDead = true;
@@ -1190,6 +1221,8 @@ var gameInit = function () {
                     };
                     ship.cannonFire = function (side) {
                         var modifier = side === 'left' ? -0.5 : 0.5;
+                        this.animation.fireSmoke[side].fire = 1;
+                        this.animation.fireSmoke[side].frame = 0;
                         switch (this.direction) {
                             case 'right':
                                 this.cannonballs.push({
@@ -1225,9 +1258,23 @@ var gameInit = function () {
                                 break;
                         }
                     };
+                    ship.isOnField = function () {
+                        if (this.col < 0 ||
+                            this.col > game.field.columns - 1 ||
+                            this.row < 0 ||
+                            this.row > game.field.rows -1)
+                        {
+                            this.animation.collision = {
+                                x: (this.col + 0.5) * game.field.cellWidth(),
+                                y: (this.row + 0.5) * game.field.cellHeight(),
+                                type: 'border'
+                            };
+                            return false;
+                        }
+                        return true;
+                    };
                     ship.savePosition = function () {
                         this.prevPosition = {
-                            //direction: this.direction,
                             col: this.col,
                             row: this.row
                         };
@@ -1236,14 +1283,6 @@ var gameInit = function () {
                         if (!Object.keys(this.prevPosition).length) {
                             return;
                         }
-                        if (!this.animation.collision) {
-                            this.animation.collision = {
-                                x: (this.col + 0.5) * game.field.cellWidth(),
-                                y: (this.row + 0.5) * game.field.cellHeight()
-                            };
-                        }
-                        //this.animation.checkPosition = true;
-                        //this.direction = this.prevPosition.direction;
                         this.col = this.prevPosition.col;
                         this.row = this.prevPosition.row;
                     };

@@ -127,7 +127,7 @@ io.sockets.on('connection', function (client) {
                 });
                 room.flags.push(new Flag({
                     points: Number(i),
-                    color: 'white',
+                    color: 'neutral',
                     col: coords.col,
                     row: coords.row
                 }))
@@ -182,20 +182,24 @@ io.sockets.on('connection', function (client) {
 
         ////////////////////////// DEVELOPMENT /////////////////////////////////
         //room.ships[0].col = 3;
-        //room.ships[0].row = 1;
-        //room.ships[0].direction = 'right';
+        //room.ships[0].row = 5;
+        //room.ships[0].direction = 'down';
         //room.ships[0].animation.angle = 90;
-        //room.ships[1].col = 4;
+        //room.ships[1].col = 3;
         //room.ships[1].row = 6;
         //room.ships[1].direction = 'left';
+        //room.ships[1].hp = 1000;
+        //room.flags[0].col = 3;
+        //room.flags[0].row = 2;
         //room.ships[1].animation.angle = 270;
         //room.winds[0].col = 4;
-        //room.winds[0].row = 1;
-        //room.winds[0].direction = 'down';
-        //room.ships[1].col = 4;
-        //room.ships[1].row = 5;
-        //room.rocks[0].col = 4;
-        //room.rocks[0].row = 2;
+        //room.winds[0].row = 0;
+        //room.winds[0].direction = 'right';
+        //room.winds[1].col = 5;
+        //room.winds[1].row = 0;
+        //room.winds[1].direction = 'down';
+        //room.rocks[0].col = 3;
+        //room.rocks[0].row = 7;
         //room.whirlpools[0].col = [4, 5, 5, 4];
         //room.whirlpools[0].row = [1, 1, 2, 2];
         ////////////////////////// DEVELOPMENT /////////////////////////////////
