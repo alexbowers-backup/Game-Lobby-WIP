@@ -172,20 +172,6 @@ var gameInit = function () {
 
                 }
             },
-            //drawExplosion: function (ship) {
-            //    if (ship.animation.explosionFrame === 8) {
-            //        ship.isDamaged = false;
-            //        ship.animation.explosionFrame = 0;
-            //        return;
-            //    }
-            //    this.ctx.drawImage(
-            //        explosionImage,
-            //        ship.animation.explosionFrame * this.field.cellWidth(), 0,
-            //        this.field.cellWidth(), this.field.cellHeight(),
-            //        ship.x - this.field.cellWidth() / 2, ship.y - this.field.cellHeight() / 2,
-            //        this.field.cellWidth(), this.field.cellHeight()
-            //    );
-            //},
             drawExplosion: function (x, y, frame) {
                 this.ctx.drawImage(
                     explosionImage,
@@ -581,7 +567,7 @@ var gameInit = function () {
                                 cannonball.x -= modifier;
                                 break;
                         }
-                        if (cannonball.distance >= game.field.cellHeight() * 3) {
+                        if (cannonball.distance >= game.field.cellHeight() * 2.5) {
                             game.animationStack.push(new game.Animation.splash(cannonball.x, cannonball.y));
                             delete ship.cannonballs[i];
                             return;
